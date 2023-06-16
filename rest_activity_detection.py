@@ -62,37 +62,53 @@ def Cole_Kripke_sleep_wake(raw_input_file):
     # update the layout
     layout.update(yaxis2=dict(title='Classification', overlaying='y', side='right'), showlegend=True);
 
+
     # set up the figure
     sleep_wake_fig = go.Figure(data=[
-        go.Scatter(x=raw.data.index.astype(str), y=raw.data, name='Data'),
-        go.Scatter(x=CK.index.astype(str), y=CK, yaxis='y2', name='CK')
+        go.Scatter(x=raw.data.index.astype(str), y=raw.data, name='Data', mode='markers'),
+        go.Scatter(x=CK.index.astype(str), y=CK, yaxis='y2', name='CK', mode='markers')
     ], layout=layout)
 
     # generate fig
     pyo.plot(sleep_wake_fig)
 
 
-def sadeh_scripps_sleep_wake(raw_input_file):  # TODO - not working at the moment
+def roenneberg_sleep_wake(raw):
+    roenneberg = raw.Roenneberg()
+    roenneberg_thr = raw.Roenneberg(threshold=0.25, min_seed_period='15min')
 
-    sadeh = raw_input_file.Sadeh()
-    scripps = raw_input_file.Scripps()
+    # update the layout
+    layout.update(yaxis2=dict(overlaying='y', side='right'), showlegend=True);
 
-    # set up the figure
-    sadeh_scripps_fig = go.Figure(data=[
+    roenneberg_fig = go.Figure(data=[
         go.Scatter(x=raw.data.index.astype(str), y=raw.data, name='Data'),
-        go.Scatter(x=sadeh.index.astype(str), y=sadeh, yaxis='y2', name='Sadeh'),
-        go.Scatter(x=scripps.index.astype(str), y=scripps, yaxis='y2', name='Scripps')
+        go.Scatter(x=roenneberg_thr.index.astype(str), y=roenneberg_thr, yaxis='y2', name='Roenneberg')
     ], layout=layout)
 
-    # generate fig
-    pyo.plot(sadeh_scripps_fig)
+    roenneberg_fig.show()
 
+def crespo_sleep_wake(raw):
+    crespo = raw.Crespo()
 
+    # only show sleep > 6 hrs?
+    crespo_6h = raw.Crespo(alpha='6h')
+    crespo_zeta = raw.Crespo(estimate_zeta=True)
+
+    # update the figure layout
+    layout.update(yaxis2=dict(overlaying='y', side='right'), showlegend=True);
+
+    crespo_fig = go.Figure(data=[
+        go.Scatter(x=raw.data.index.astype(str), y=raw.data, name='Data'),
+        go.Scatter(x=crespo_zeta.index.astype(str), y=crespo_zeta, yaxis='y2', name='Crespo (Automatic)')
+    ], layout=layout)
+
+    crespo_fig.show()
 
 
 '''FUNCTION CALLS'''
 raw = read_input_data('79012_0003900559-timeSeries.csv.gz')  # the file with disrupted sleep patterns potentially present
 Cole_Kripke_sleep_wake(raw)
-#sadeh_scripps_sleep_wake(raw)
+#roenneberg_sleep_wake(raw)
+#crespo_sleep_wake(raw)
 
 
