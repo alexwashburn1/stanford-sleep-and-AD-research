@@ -9,7 +9,7 @@ import os
 
 def read_input_data(filename):
     """
-    Reads in a single cwa file for actigraphy analysis
+    Reads in a SINGLE cwa file for actigraphy analysis
     :param filename: the name of the file to read in
     :return: raw processed file
     """
@@ -42,6 +42,41 @@ def read_input_data(filename):
 
     return raw
 
+def read_files_by_batch(file_identifier):
+    """
+    Read in multiple cwa files in using a common identifier.
+    :param file_identifier: a string containing the text that all files we want to read contain, as well as a wildcard.
+    :return: the batch of raw files that were read in
+    """
+    # Get the directory path of the current script or module
+    fpath = '/Users/awashburn/Library/CloudStorage/OneDrive-BowdoinCollege/Documents/Mormino-Lab-Internship/Python-Projects/Actigraphy-Testing/timeSeries-actigraphy-csv-files/'
+
+    #  Read test files
+    raw_batch = pyActigraphy.io.read_raw(fpath+file_identifier, reader_type='BBA')
+
+    # Check how many files have been read
+    print('number of files in the batch: ')
+    print(len(raw_batch.readers))
+
+    # print the duration of each file
+    print('duration of each file in the batch: ')
+    print(raw_batch.duration())
+
+    # print the inter-daily stability corresponding to each cwa file:
+    print("mean inter-daily stability of each cwa file:")
+    print(raw_batch.ISm())
+
+    # print the inter-daily stability corresponding to each period in each file:
+    print('inter-daily stability corresponding to each period in each file: ')
+    print(raw_batch.ISp(period = '6D'))
+
+    # calculate and print the relative amplitude of each cwa file timeseries:
+    print('relative amplitude of each cwa file: ')
+    print(raw_batch.RA())
+
+
+
+    return raw_batch
 
 # create a layout for all future plotting
 layout = go.Layout(
@@ -109,11 +144,12 @@ def retrieve_activity_onset_offset(raw_data_file):
 
 
 '''FUNCTION CALLS'''
-
-raw = read_input_data('79036_0000000504-timeSeries.csv.gz')
-multi_day_plot(raw, layout)
-#daily_activity_profile(raw, layout)
-#retrieve_activity_onset_offset(raw)
+# raw = read_input_data('79036_0000000504-timeSeries.csv.gz')  # change the filename here
+raw_batch = read_files_by_batch('*timeSeries.csv.gz')  # read in anything containing characters following wildcard
+print(raw_batch.IS())
+# multi_day_plot(raw, layout)
+# daily_activity_profile(raw, layout)
+# retrieve_activity_onset_offset(raw)
 
 
 
