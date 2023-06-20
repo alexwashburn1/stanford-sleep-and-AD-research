@@ -15,7 +15,8 @@ def read_input_data(filename):
     """
 
     # Get the directory path of the current script or module
-    fpath = '/Users/awashburn/Library/CloudStorage/OneDrive-BowdoinCollege/Documents/Mormino-Lab-Internship/Python-Projects/Actigraphy-Testing/timeSeries-actigraphy-csv-files/'
+    fpath = '/Users/awashburn/Library/CloudStorage/OneDrive-BowdoinCollege/Documents/' \
+                 'Mormino-Lab-Internship/Python-Projects/Actigraphy-Testing/timeSeries-actigraphy-csv-files/stanford-modified-csv/'
 
     # actually read in the data
     raw = pyActigraphy.io.read_raw_bba(fpath + filename)

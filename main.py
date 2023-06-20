@@ -15,7 +15,8 @@ def read_input_data(filename):
     """
 
     # Get the directory path of the current script or module
-    fpath = '/Users/awashburn/Library/CloudStorage/OneDrive-BowdoinCollege/Documents/Mormino-Lab-Internship/Python-Projects/Actigraphy-Testing/timeSeries-actigraphy-csv-files/'
+    fpath = '/Users/awashburn/Library/CloudStorage/OneDrive-BowdoinCollege/Documents/' \
+                 'Mormino-Lab-Internship/Python-Projects/Actigraphy-Testing/timeSeries-actigraphy-csv-files/stanford-modified-csv/'
 
     # actually read in the data
     raw = pyActigraphy.io.read_raw_bba(fpath+filename)
@@ -49,7 +50,8 @@ def read_files_by_batch(file_identifier):
     :return: the batch of raw files that were read in
     """
     # Get the directory path of the current script or module
-    fpath = '/Users/awashburn/Library/CloudStorage/OneDrive-BowdoinCollege/Documents/Mormino-Lab-Internship/Python-Projects/Actigraphy-Testing/timeSeries-actigraphy-csv-files/'
+    fpath = '/Users/awashburn/Library/CloudStorage/OneDrive-BowdoinCollege/Documents/' \
+                 'Mormino-Lab-Internship/Python-Projects/Actigraphy-Testing/timeSeries-actigraphy-csv-files/stanford-modified-csv/'
 
     #  Read test files
     raw_batch = pyActigraphy.io.read_raw(fpath+file_identifier, reader_type='BBA')
@@ -73,8 +75,6 @@ def read_files_by_batch(file_identifier):
     # calculate and print the relative amplitude of each cwa file timeseries:
     print('relative amplitude of each cwa file: ')
     print(raw_batch.RA())
-
-
 
     return raw_batch
 

@@ -9,7 +9,9 @@ def rename_acc_MED(input_dir, output_dir, filename):
     """
     Helper function to delete the acc column that does not have imputed values. Take the acc_med column which has imputed values
     calculated already. Rename the acc_med column to acc, so pyActigraphy recognizes it.
-    :param csv: the csv file to modify
+    :param input_dir: the filepath of the output file
+    :param output_dir: the directory to output the converted file to
+    :param filename: the filename of the input file to convert
     :return:
     """
 
@@ -28,7 +30,7 @@ def rename_acc_MED(input_dir, output_dir, filename):
 
 def rename_acc_batch_csv(input_dir, output_dir):
     """
-    iterates over all files in a directory, renames acc_med to acc and deletes OG acc
+    iterates over all files in a directory, renames acc_med to acc and deletes OG acc column.
     :return:
     """
 
@@ -40,7 +42,7 @@ def rename_acc_batch_csv(input_dir, output_dir):
             continue
 
 
-'''Function calls'''
+'''function calls'''
 input_directory_name = '/Users/awashburn/Library/CloudStorage/OneDrive-BowdoinCollege/Documents/' \
                  'Mormino-Lab-Internship/Python-Projects/Actigraphy-Testing/timeSeries-actigraphy-csv-files/stanford-to-modify-csv/'
 
