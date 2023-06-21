@@ -35,12 +35,24 @@ def rest_to_activity_transition(raw):
     :param raw: the raw data file with actigraphy data
     :return:
     """
-    pRA, pRA_weights = raw.pRA(0, start='00:00:00', period='8H')
+    ### pRA graph ###
+    pRA, pRA_weights = raw.pRA(0.01, start='00:00:00', period='8H')
 
     # update layout
     layout.update(title="Rest->Activity transition probability",xaxis=dict(title="Time [min]"), showlegend=False);
 
     fig = go.Figure(data=go.Scatter(x=pRA.index, y=pRA, name='', mode='markers'), layout=layout)
+
+    fig.show()
+
+
+    ### pAR graph ###
+    pAR, pAR_weights = raw.pAR(0.01, start='00:00:00', period='8H')
+
+    # update layout
+    layout.update(title="Activity -> Rest transition probability", xaxis=dict(title="Time [min]"), showlegend=False);
+
+    fig = go.Figure(data=go.Scatter(x=pAR.index, y=pRA, name='', mode='markers'), layout=layout)
 
     fig.show()
 

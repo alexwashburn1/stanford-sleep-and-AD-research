@@ -54,8 +54,11 @@ def export_metrics_to_compare(filename): #TODO - add output_dir as a parameter e
     metrics_dict['RA'] = RA
 
     # kAR (activity to rest probability)
-    kAR = raw.kAR(0)
+    kAR = raw.kAR(0.1)  # todo - threshold  ?
     metrics_dict['kAR'] = kAR
+
+    kRA = raw.kRA(0.1)
+    print('RA attempt, ', kRA)  # TODO - create a histogram to determine an appropriate threshold ?
 
     # cosinor metrics
     cosinor = Cosinor()
@@ -123,6 +126,21 @@ input_dir = '/Users/awashburn/Library/CloudStorage/OneDrive-BowdoinCollege/Docum
 output_file = '/Users/awashburn/Library/CloudStorage/OneDrive-BowdoinCollege/Documents/' \
                  'Mormino-Lab-Internship/Python-Projects/Actigraphy-Testing/timeSeries-actigraphy-csv-files/stanford-modified-csv/output_metrics.csv'
 
-compute_metrics_full_batch(input_dir, output_file)
+#compute_metrics_full_batch(input_dir, output_file)
+
+filename = '78203_0000000534-timeSeries.csv.gz'
+export_metrics_to_compare(filename)
+
+df = pd.read_csv(input_dir+filename)
+print('df: ', df)
+fig = df.hist(by = 'acc')
+fig.show()
+
+
+
+raw = read_input_data(filename)
+print('type raw: ', type(raw))
+
+
 
 
