@@ -41,6 +41,18 @@ def export_metrics_to_compare(filename): #TODO - add output_dir as a parameter e
     # Add filename to the dictionary
     metrics_dict['filename'] = filename
 
+    # start time
+    start_time = raw.start_time
+    metrics_dict['start_time'] = start_time
+
+    # duration
+    duration = raw.duration()
+    metrics_dict['duration'] = duration
+
+    # stop time
+    stop_time = start_time + duration
+    metrics_dict['stop_time'] = stop_time
+
     # Inter-daily stability (IS)
     IS = raw.IS()
     metrics_dict['IS'] = IS
@@ -54,11 +66,12 @@ def export_metrics_to_compare(filename): #TODO - add output_dir as a parameter e
     metrics_dict['RA'] = RA
 
     # kAR (activity to rest probability)
-    kAR = raw.kAR(0.1)  # todo - threshold  ?
+    kAR = raw.kAR(0.01)  # todo - threshold  ?
     metrics_dict['kAR'] = kAR
 
-    kRA = raw.kRA(0.1)
-    print('RA attempt, ', kRA)  # TODO - create a histogram to determine an appropriate threshold ?
+    kRA = raw.kRA(0.01)
+    # TODO - create a histogram to determine an appropriate threshold ?
+    metrics_dict['kRA'] = kRA
 
     # cosinor metrics
     cosinor = Cosinor()
@@ -72,10 +85,9 @@ def export_metrics_to_compare(filename): #TODO - add output_dir as a parameter e
     # parse out dictionary values to individual variables
     metrics_dict['amplitude'] = cosinor_metrics_dict['Amplitude']
     metrics_dict['acrophase'] = cosinor_metrics_dict['Acrophase']
-    metrics_dict['period'] = cosinor_metrics_dict['Period']
     metrics_dict['mesor'] = cosinor_metrics_dict['Mesor']
 
-    metrics_dict['reduced chi^2'] = results.redchi
+    metrics_dict['reduced_chi^2'] = results.redchi
     metrics_dict['aic'] = results.aic
     metrics_dict['bic'] = results.bic
 
@@ -90,8 +102,8 @@ def compute_metrics_full_batch(input_dir, output_file):
     """
 
     with open(output_file, 'w', newline='') as csvfile:
-        writer = csv.DictWriter(csvfile, fieldnames=['filename', 'IS', 'IV', 'RA', 'kAR', 'amplitude', 'acrophase',
-                                                     'period', 'mesor', 'reduced chi^2', 'aic', 'bic'])
+        writer = csv.DictWriter(csvfile, fieldnames=['filename', 'start_time', 'duration', 'stop_time', 'IS', 'IV', 'RA', 'kAR', 'kRA',
+                         'amplitude', 'acrophase', 'mesor', 'reduced_chi^2', 'aic', 'bic'])
         writer.writeheader()
 
         for filename in os.listdir(input_dir):
@@ -109,7 +121,8 @@ def create_empty_csv_file(file_path):
     with open(file_path, 'w', newline='') as csvfile:
         writer = csv.writer(csvfile)
         # Write header row
-        writer.writerow(['filename', 'IS', 'IV', 'RA', 'kAR', 'amplitude', 'acrophase', 'period', 'mesor', 'reduced chi^2', 'aic', 'bic'])
+        writer.writerow(['filename', 'start_time', 'duration', 'stop_time', 'IS', 'IV', 'RA', 'kAR', 'kRA',
+                         'amplitude', 'acrophase', 'mesor', 'reduced_chi^2', 'aic', 'bic'])
 
 
 '''FUNCTION CALLS'''
@@ -126,20 +139,8 @@ input_dir = '/Users/awashburn/Library/CloudStorage/OneDrive-BowdoinCollege/Docum
 output_file = '/Users/awashburn/Library/CloudStorage/OneDrive-BowdoinCollege/Documents/' \
                  'Mormino-Lab-Internship/Python-Projects/Actigraphy-Testing/timeSeries-actigraphy-csv-files/stanford-modified-csv/output_metrics.csv'
 
-#compute_metrics_full_batch(input_dir, output_file)
+compute_metrics_full_batch(input_dir, output_file)
 
-filename = '78203_0000000534-timeSeries.csv.gz'
-export_metrics_to_compare(filename)
-
-df = pd.read_csv(input_dir+filename)
-print('df: ', df)
-fig = df.hist(by = 'acc')
-fig.show()
-
-
-
-raw = read_input_data(filename)
-print('type raw: ', type(raw))
 
 
 
