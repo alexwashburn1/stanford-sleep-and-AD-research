@@ -38,7 +38,7 @@ def Cole_Kripke_sleep_wake(raw_input_file):
     :param raw_input_file: the input file containing actigraphy data
     :return: no return for this
     """
-    CK = raw_input_file.CK()
+    CK = raw_input_file.CK(threshold=0.1)
 
     # update the layout
     layout.update(yaxis2=dict(title='Classification', overlaying='y', side='right'), showlegend=True);
@@ -68,6 +68,30 @@ def roenneberg_sleep_wake(raw):
 
     roenneberg_fig.show()
 
+def sadeh_sleep_wake(raw):
+    sadeh = raw.Sadeh()
+
+    layout.update(yaxis2=dict(title='Classification', overlaying='y', side='right'), showlegend=True);
+
+    fig = go.Figure(data=[
+        go.Scatter(x=raw.data.index.astype(str), y=raw.data, name='Data'),
+        go.Scatter(x=sadeh.index.astype(str), y=sadeh, yaxis='y2', name='Sadeh')
+    ], layout=layout)
+
+    fig.show()
+
+def scripps_sleep_wake(raw):
+    scripps = raw.Scripps(threshold=0.1)
+
+    layout.update(yaxis2=dict(title='Classification', overlaying='y', side='right'), showlegend=True);
+
+    fig = go.Figure(data=[
+        go.Scatter(x=raw.data.index.astype(str), y=raw.data, name='Data'),
+        go.Scatter(x=scripps.index.astype(str), y=scripps, yaxis='y2', name='Scripps')
+    ], layout=layout)
+
+    fig.show()
+
 def crespo_sleep_wake(raw):
     crespo = raw.Crespo()
 
@@ -85,11 +109,17 @@ def crespo_sleep_wake(raw):
 
     crespo_fig.show()
 
+    aot = raw.Crespo_AoT()
+    print('aot: ', aot)
+
+
 
 '''FUNCTION CALLS'''
-raw = read_input_data('79012_0003900559-timeSeries.csv.gz')  # the file with disrupted sleep patterns potentially present
-Cole_Kripke_sleep_wake(raw)
+raw = read_input_data('78203_0000000613-timeSeries.csv.gz')  # the file with disrupted sleep patterns potentially present
+#Cole_Kripke_sleep_wake(raw)
 #roenneberg_sleep_wake(raw)
 #crespo_sleep_wake(raw)
+#sadeh_sleep_wake(raw)
+scripps_sleep_wake(raw)
 
 

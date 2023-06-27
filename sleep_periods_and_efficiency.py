@@ -59,7 +59,11 @@ def crespo_0_1_classification(raw):
     """
     crespo = raw.Crespo()
     print('crespo AoT: ', raw.Crespo_AoT)
+
+
     return crespo
+
+
 
 def sleep_profile(raw):
     """
@@ -73,34 +77,17 @@ def sleep_profile(raw):
 '''FUNCTION CALLS'''
 filename = '78203_0000000613-timeSeries.csv.gz'
 raw = read_input_data(filename)
-aot = crespo_AoT(raw)
-#print('aot: ', aot)
-#print(aot[0])
-#print('type of data: ', type(aot))
+print(crespo_0_1_classification(raw))
 
-ck_classification_0_1 = CK_0_1_classification(raw)
+
+
+#ck_classification_0_1 = CK_0_1_classification(raw)
 #print('ck classification ', ck_classification_0_1)
 
-ck_classification_0_1.to_csv('/Users/awashburn/Library/CloudStorage/OneDrive-BowdoinCollege/Documents/' \
-               'Mormino-Lab-Internship/Python-Projects/Actigraphy-Testing/timeSeries-actigraphy-csv-files/stanford-modified-csv/'
-                             'ck_0_1_scoring_scoring_78203_0000000613.csv')
+#ck_classification_0_1.to_csv('/Users/awashburn/Library/CloudStorage/OneDrive-BowdoinCollege/Documents/' \
+#               'Mormino-Lab-Internship/Python-Projects/Actigraphy-Testing/timeSeries-actigraphy-csv-files/stanford-modified-csv/'
+#                             'ck_0_1_scoring_scoring_78203_0000000613.csv')
 
-#sadeh_classification_0_1 = sadeh_0_1_classification(raw)
-#print('sadeh classification: ', sadeh_classification_0_1)
-#print('type sadeh: ', type(sadeh_classification_0_1))
-
-#sadeh_classification_0_1.to_csv('/Users/awashburn/Library/CloudStorage/OneDrive-BowdoinCollege/Documents/' \
-#                 'Mormino-Lab-Internship/Python-Projects/Actigraphy-Testing/timeSeries-actigraphy-csv-files/stanford-modified-csv/sadeh_0_1_scoring.csv')
-
-#crespo_0_1_classification = crespo_0_1_classification(raw)
-#print('crespo classification: ', crespo_0_1_classification)
-
-#crespo_0_1_classification.to_csv('/Users/awashburn/Library/CloudStorage/OneDrive-BowdoinCollege/Documents/' \
-#                 'Mormino-Lab-Internship/Python-Projects/Actigraphy-Testing/timeSeries-actigraphy-csv-files/stanford-modified-csv/crespo_0_1'
-#                                 '_scoring_78203_0000000613.csv')
-
-#sleep_prof = sleep_profile(raw)
-#print('sleep profile: ', sleep_prof)
 
 
 
