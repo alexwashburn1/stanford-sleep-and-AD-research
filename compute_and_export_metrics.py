@@ -15,7 +15,7 @@ def read_input_data(filename):
 
     # Get the directory path of the current script or module
     fpath = '/Users/awashburn/Library/CloudStorage/OneDrive-BowdoinCollege/Documents/' \
-                 'Mormino-Lab-Internship/Python-Projects/Actigraphy-Testing/timeSeries-actigraphy-csv-files/stanford-modified-csv/'
+                 'Mormino-Lab-Internship/Python-Projects/Actigraphy-Testing/timeSeries-actigraphy-csv-files/all-data-files/'
 
     # actually read in the data
     raw = pyActigraphy.io.read_raw_bba(fpath + filename)
@@ -129,7 +129,7 @@ def create_empty_csv_file(file_path):
 # initialize blank csv file
 file_name = 'output_metrics_full_data_set.csv'
 output_path = '/Users/awashburn/Library/CloudStorage/OneDrive-BowdoinCollege/Documents/' \
-                 'Mormino-Lab-Internship/Python-Projects/Actigraphy-Testing/timeSeries-actigraphy-csv-files/stanford-modified-csv/'+ file_name
+                 'Mormino-Lab-Internship/Python-Projects/Actigraphy-Testing/timeSeries-actigraphy-csv-files/all-data-files/summary-metrics/' + file_name
 
 create_empty_csv_file(output_path)
 
@@ -138,9 +138,11 @@ input_dir = '/Users/awashburn/Library/CloudStorage/OneDrive-BowdoinCollege/Docum
                  'Mormino-Lab-Internship/Python-Projects/Actigraphy-Testing/timeSeries-actigraphy-csv-files/all-data-files/'
 
 output_file = '/Users/awashburn/Library/CloudStorage/OneDrive-BowdoinCollege/Documents/' \
-                 'Mormino-Lab-Internship/Python-Projects/Actigraphy-Testing/timeSeries-actigraphy-csv-files/all-data-files/summary-metrics' + file_name 
+                 'Mormino-Lab-Internship/Python-Projects/Actigraphy-Testing/timeSeries-actigraphy-csv-files/all-data-files/summary-metrics/' + file_name
 
 compute_metrics_full_batch(input_dir, output_file)
+
+
 
 
 
