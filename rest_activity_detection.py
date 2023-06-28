@@ -81,7 +81,7 @@ def sadeh_sleep_wake(raw):
     fig.show()
 
 def scripps_sleep_wake(raw):
-    scripps = raw.Scripps(threshold=0.1)
+    scripps = raw.Scripps(threshold=0.05)
 
     layout.update(yaxis2=dict(title='Classification', overlaying='y', side='right'), showlegend=True);
 
@@ -119,7 +119,7 @@ raw = read_input_data('78203_0000000613-timeSeries.csv.gz')  # the file with dis
 #Cole_Kripke_sleep_wake(raw)
 #roenneberg_sleep_wake(raw)
 #crespo_sleep_wake(raw)
-#sadeh_sleep_wake(raw)
-scripps_sleep_wake(raw)
+sadeh_sleep_wake(raw)
+#scripps_sleep_wake(raw)
 
 

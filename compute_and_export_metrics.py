@@ -127,17 +127,18 @@ def create_empty_csv_file(file_path):
 
 '''FUNCTION CALLS'''
 # initialize blank csv file
+file_name = 'output_metrics_full_data_set.csv'
 output_path = '/Users/awashburn/Library/CloudStorage/OneDrive-BowdoinCollege/Documents/' \
-                 'Mormino-Lab-Internship/Python-Projects/Actigraphy-Testing/timeSeries-actigraphy-csv-files/stanford-modified-csv/output_metrics.csv'
+                 'Mormino-Lab-Internship/Python-Projects/Actigraphy-Testing/timeSeries-actigraphy-csv-files/stanford-modified-csv/'+ file_name
 
 create_empty_csv_file(output_path)
 
 # write all of the data to the csv file
 input_dir = '/Users/awashburn/Library/CloudStorage/OneDrive-BowdoinCollege/Documents/' \
-                 'Mormino-Lab-Internship/Python-Projects/Actigraphy-Testing/timeSeries-actigraphy-csv-files/stanford-modified-csv/'
+                 'Mormino-Lab-Internship/Python-Projects/Actigraphy-Testing/timeSeries-actigraphy-csv-files/all-data-files/'
 
 output_file = '/Users/awashburn/Library/CloudStorage/OneDrive-BowdoinCollege/Documents/' \
-                 'Mormino-Lab-Internship/Python-Projects/Actigraphy-Testing/timeSeries-actigraphy-csv-files/stanford-modified-csv/output_metrics.csv'
+                 'Mormino-Lab-Internship/Python-Projects/Actigraphy-Testing/timeSeries-actigraphy-csv-files/all-data-files/summary-metrics' + file_name 
 
 compute_metrics_full_batch(input_dir, output_file)
 

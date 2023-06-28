@@ -29,15 +29,16 @@ def read_input_data(filename):
 
     return raw
 
-def ck_0_1_classification_single_file(raw, output_path, file_ID):
+def ck_0_1_classification_single_file(raw, output_path, file_ID, threshold=0.1): # TODO - can change the threshold
     """
     Generates the binarized classification for sleep and wake (Cole-Kripke) for a particular raw file.
     :param raw: the raw file
     """
 
-    ck = raw.CK()
+    ck = raw.CK(threshold = threshold)
     # write the binarized csv to the correct output path
-    ck.to_csv(output_path + 'ck_0_1_scoring_scoring_' + file_ID + '.csv')
+    thresh_str = str(threshold)
+    ck.to_csv(output_path + 'ck_0_1_scoring_scoring_' + file_ID + '_' + thresh_str + '.csv')
 
 def sadeh_0_1_classification_single_file(raw, output_path, file_ID):
     """
@@ -50,7 +51,7 @@ def sadeh_0_1_classification_single_file(raw, output_path, file_ID):
     sadeh.to_csv(output_path + 'sadeh_0_1_scoring_scoring_' + file_ID + '.csv')
 
 
-def sleep_0_1_classification_all_files(raw_input_path, sleep_diary_path, output_path, sadeh=True, ck=False):
+def sleep_0_1_classification_all_files(raw_input_path, sleep_diary_path, output_path, sadeh=False, ck=True):
    """
    Determines all of the raw files to classify by looking for which ones have a valid sleep log.
     After determining which ones have a valid sleep log, creates a raw object for them, and based on the raw object
@@ -146,7 +147,7 @@ def calculate_sleep_period(ck_0_1_file, sleep_journal_file, ck_file_path, sleep_
 
     # Construct the output file path
     sadeh_or_ck = 'ck' # NOTE - can change to whichever is being generated. TODO - add this as a parameter.
-    output_file_path = os.path.join(ck_file_path, f"{id}_sleep_duration_metrics_" + sadeh_or_ck + ".csv")
+    output_file_path = os.path.join(ck_file_path, f"{id}_sleep_duration_metrics_" + sadeh_or_ck + "_0.1.csv")
 
     # Write the result DataFrame to CSV
     result_df.to_csv(output_file_path, index=False)
@@ -171,11 +172,11 @@ output_path = '/Users/awashburn/Library/CloudStorage/OneDrive-BowdoinCollege/Doc
 
 #sleep_0_1_classification_all_files(raw_input_path, sleep_diary_path, output_path)
 
-file_id = '79036_0000000504'
+file_id = '78203_0000000534'
 
 sadeh_or_ck = 'ck'
 
-calculate_sleep_period(sadeh_or_ck + '_0_1_scoring_scoring_' + file_id + '.csv', file_id + '.ods', output_path, sleep_diary_path)
+calculate_sleep_period(sadeh_or_ck + '_0_1_scoring_scoring_' + file_id + '_0.1.csv', file_id + '.ods', output_path, sleep_diary_path)
 
 
 

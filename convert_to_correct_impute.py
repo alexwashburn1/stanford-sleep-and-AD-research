@@ -19,9 +19,10 @@ def rename_acc_MED(input_dir, output_dir, filename):
     df = pd.read_csv(input_dir+filename)
 
     # drop the acc (non-impute) column
+    print('filename: ', filename)
     df.drop(columns=['acc'], inplace=True)
 
-    # rename the acc_MED to acc
+    # rename the acc_med to acc
     df.rename(columns={'acc_med': 'acc'}, inplace=True)
 
     # write out the new csv file to the folder, as a compressed csv file
@@ -35,7 +36,7 @@ def rename_acc_batch_csv(input_dir, output_dir):
     """
 
     for filename in os.listdir(input_dir):
-        if filename.endswith(".csv"):
+        if filename.endswith("timeSeries.csv"):
             rename_acc_MED(input_dir, output_dir, filename)
             continue
         else:
@@ -44,9 +45,9 @@ def rename_acc_batch_csv(input_dir, output_dir):
 
 '''function calls'''
 input_directory_name = '/Users/awashburn/Library/CloudStorage/OneDrive-BowdoinCollege/Documents/' \
-                 'Mormino-Lab-Internship/Python-Projects/Actigraphy-Testing/timeSeries-actigraphy-csv-files/stanford-to-modify-csv/'
+                 'Mormino-Lab-Internship/Python-Projects/Actigraphy-Testing/timeSeries-actigraphy-csv-files/all-data-files/'
 
 output_directory_name = '/Users/awashburn/Library/CloudStorage/OneDrive-BowdoinCollege/Documents/' \
-                 'Mormino-Lab-Internship/Python-Projects/Actigraphy-Testing/timeSeries-actigraphy-csv-files/stanford-modified-csv/'
+                 'Mormino-Lab-Internship/Python-Projects/Actigraphy-Testing/timeSeries-actigraphy-csv-files/all-data-files/'
 
 rename_acc_batch_csv(input_directory_name, output_directory_name)

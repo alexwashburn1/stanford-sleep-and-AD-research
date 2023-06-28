@@ -44,7 +44,7 @@ def plot_sleep_log(raw, sleep_diary):
 
     crespo_6h = raw.Crespo(alpha='6h')
     crespo_zeta = raw.Crespo(estimate_zeta=True)
-    CK = raw.CK(threshold=0.05)
+    CK = raw.CK(threshold=0.1)
 
     raw.sleep_diary.shaded_area
 
