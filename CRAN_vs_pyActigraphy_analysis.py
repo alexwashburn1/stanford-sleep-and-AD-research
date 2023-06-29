@@ -11,11 +11,11 @@ from scipy.stats import linregress
 
 
 
-def GGIR_vs_pyActigraphy_metric_bias(GGIR_df, pyActigraphy_df, metric_to_compare, output_filepath):
+def CRAN_vs_pyActigraphy_metric_bias(CRAN_df, pyActigraphy_df, metric_to_compare, output_filepath):
     """
-    Compare a metric between GGIR and pyActigraphy packages.
+    Compare a metric between CRAN and pyActigraphy packages.
 
-    :param GGIR_df: GGIR dataframe.
+    :param CRAN_df: CRAN dataframe.
     :param pyActigraphy_df: pyActigraphy dataframe.
     :param metric_to_compare: the metric to compare between the two packages.
     :param output_filepath: the filepath to save the figure.
@@ -24,7 +24,7 @@ def GGIR_vs_pyActigraphy_metric_bias(GGIR_df, pyActigraphy_df, metric_to_compare
 
     # Extract the metric values from the merged DataFrame
     x_values = pyActigraphy_df[metric_to_compare]
-    y_values = GGIR_df[metric_to_compare]
+    y_values = CRAN_df[metric_to_compare]
 
     # Create empty lists to store filtered values
     x_filtered = []
@@ -48,8 +48,8 @@ def GGIR_vs_pyActigraphy_metric_bias(GGIR_df, pyActigraphy_df, metric_to_compare
 
     # Set axis labels and title
     plt.xlabel('pyActigraphy ' + metric_to_compare)
-    plt.ylabel('GGIR ' + metric_to_compare)
-    plt.title('Comparison of pyActigraphy vs GGIR for {}'.format(metric_to_compare))
+    plt.ylabel('CRAN ' + metric_to_compare)
+    plt.title('Comparison of pyActigraphy vs CRAN for {}'.format(metric_to_compare))
 
     # Add a line of best fit (dotted) using filtered values
     line = slope * x_filtered + intercept
@@ -96,15 +96,15 @@ pyActigraphy_metrics_df["filename"] = pyActigraphy_metrics_df["filename"].str.re
 pyActigraphy_metrics_df = pyActigraphy_metrics_df.sort_values("filename", ascending=True)
 print('pyActigraphy: ', pyActigraphy_metrics_df.head())
 
-# read in summary metrics from GGIR
-GGIR_metrics_df = pd.read_csv(filepath + 'processedrhythms_n166_2023-06-19.csv')
+# read in summary metrics from CRAN
+CRAN_metrics_df = pd.read_csv(filepath + 'processedrhythms_n166_2023-06-19.csv')
 
 # Remove the suffix from the filename to get only the ID
-GGIR_metrics_df["filename"] = GGIR_metrics_df["filename"].str.replace(".cwa$", "")
+CRAN_metrics_df["filename"] = CRAN_metrics_df["filename"].str.replace(".cwa$", "")
 
-# Sort the filename column in GGIR_metrics_df in ascending order
-GGIR_metrics_df = GGIR_metrics_df.sort_values("filename", ascending=True)
-print('GGIR: ', GGIR_metrics_df.head())
+# Sort the filename column in CRAN_metrics_df in ascending order
+CRAN_metrics_df = CRAN_metrics_df.sort_values("filename", ascending=True)
+print('CRAN: ', CRAN_metrics_df.head())
 
 # graph
 
@@ -112,5 +112,5 @@ output_filepath = '/Users/awashburn/Library/CloudStorage/OneDrive-BowdoinCollege
                  'Mormino-Lab-Internship/Python-Projects/Actigraphy-Testing/timeSeries-actigraphy-csv-files/all-data-files/summary-metrics/bias-figs/'
 
 # CHANGE the string argument to change which metric to compare
-GGIR_vs_pyActigraphy_metric_bias(GGIR_metrics_df, pyActigraphy_metrics_df, 'Acrophase', output_filepath)
+CRAN_vs_pyActigraphy_metric_bias(CRAN_metrics_df, pyActigraphy_metrics_df, 'Acrophase', output_filepath)
 
