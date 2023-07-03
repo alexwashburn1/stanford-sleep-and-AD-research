@@ -100,8 +100,9 @@ def GGIR_vs_CRAN_metric_bias(CRAN_df, GGIR_df, metric_to_compare, output_filepat
     # Calculate R-squared only with filtered values
     r_squared = r_value ** 2
 
-    # Add R-squared value and slope to the plot
-    plt.text(plt.xlim()[0], plt.ylim()[1], f'R-squared: {r_squared:.4f}\nSlope: {slope:.4f}', ha='left', va='top')
+    # add a legend with R^2 and slope
+    plt.text(0.05, 0.95, f'R-squared: {r_squared:.4f}\nSlope: {slope:.4f}', ha='left', va='top',
+             transform=plt.gcf().transFigure)
 
     # Determine the minimum and maximum values with a margin
     margin = 0.001  # Adjust the margin as needed
@@ -140,5 +141,5 @@ CRAN_metrics_df = prepare_CRAN_data(filepath, CRAN_filename)
 output_filepath = '/Users/awashburn/Library/CloudStorage/OneDrive-BowdoinCollege/Documents/' \
                  'Mormino-Lab-Internship/Python-Projects/Actigraphy-Testing/timeSeries-actigraphy-csv-files/all-data-files/summary-metrics/bias-figs/'
 
-metric_to_compare = 'IS'
+metric_to_compare = 'IV'
 GGIR_vs_CRAN_metric_bias(CRAN_metrics_df, GGIR_metrics_df, metric_to_compare, output_filepath)

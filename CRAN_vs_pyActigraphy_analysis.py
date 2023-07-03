@@ -97,8 +97,9 @@ def CRAN_vs_pyActigraphy_metric_bias(CRAN_df, pyActigraphy_df, metric_to_compare
     # Calculate R-squared only with filtered values
     r_squared = r_value ** 2
 
-    # Add R-squared value and slope to the plot
-    plt.text(plt.xlim()[0], plt.ylim()[1], f'R-squared: {r_squared:.4f}\nSlope: {slope:.4f}', ha='left', va='top')
+    # add a legend with R^2 and slope
+    plt.text(0.05, 0.95, f'R-squared: {r_squared:.4f}\nSlope: {slope:.4f}', ha='left', va='top',
+             transform=plt.gcf().transFigure)
 
     # Determine the minimum and maximum values with a margin
     margin = 0.001  # Adjust the margin as needed
@@ -113,6 +114,76 @@ def CRAN_vs_pyActigraphy_metric_bias(CRAN_df, pyActigraphy_df, metric_to_compare
 
     # Save the figure to the specified filepath
     plt.savefig(output_filepath)
+
+    # Show the plot
+    plt.show()
+
+
+
+def CRAN_vs_pyActigraphy_two_metrics(CRAN_df, pyActigraphy_df, pyActigraphy_metric, CRAN_metric, output_filepath):
+    """
+    Compare a metric between CRAN and pyActigraphy packages.
+
+    :param CRAN_df: CRAN dataframe.
+    :param pyActigraphy_df: pyActigraphy dataframe.
+    :param metric_to_compare: the metric to compare between the two packages.
+    :param output_filepath: the filepath to save the figure.
+    :return:
+    """
+
+    # Extract the metric values from the merged DataFrame
+    x_values = pyActigraphy_df[pyActigraphy_metric]
+    y_values = CRAN_df[CRAN_metric]
+
+    # Create empty lists to store filtered values
+    x_filtered = []
+    y_filtered = []
+
+    # Iterate over the values and filter points outside the limits - DEBUGGING invalid values for Amplitude
+    for x, y in zip(x_values, y_values):
+        if x >= 0.05 and y >= 0.05:
+            x_filtered.append(x)
+            y_filtered.append(y)
+
+    # Convert filtered lists to numpy arrays
+    x_filtered = np.array(x_filtered)
+    y_filtered = np.array(y_filtered)
+
+    # Perform linear regression only on filtered values
+    slope, intercept, r_value, p_value, std_err = linregress(x_filtered, y_filtered)
+
+    # Create a scatter plot with filtered values
+    plt.scatter(x_filtered, y_filtered)
+
+    # Set axis labels and title
+    plt.xlabel('pyActigraphy ' + pyActigraphy_metric)
+    plt.ylabel('CRAN ' + CRAN_metric)
+    plt.title('kRA vs. L5')
+
+    # Add a line of best fit (dotted) using filtered values
+    line = slope * x_filtered + intercept
+    plt.plot(x_filtered, line, 'r--')
+
+    # Calculate R-squared only with filtered values
+    r_squared = r_value ** 2
+
+    # add a legend with R^2 and slope
+    plt.text(0.05, 0.95, f'R-squared: {r_squared:.4f}\nSlope: {slope:.4f}', ha='left', va='top',
+             transform=plt.gcf().transFigure)
+
+    # Determine the minimum and maximum values with a margin
+    margin = 0.001  # Adjust the margin as needed
+    min_value = min(min(x_values), min(y_values))
+    max_value = max(max(x_values), max(y_values))
+    xlim = (min_value * (1 - margin), max_value * (1 + margin))
+    ylim = (min_value * (1 - margin), max_value * (1 + margin))
+
+    # Set the limits for both axes with the margin
+    #plt.xlim(xlim)
+    #plt.ylim(ylim)
+
+    # Save the figure to the specified filepath
+    #plt.savefig(output_filepath)
 
     # Show the plot
     plt.show()
@@ -137,6 +208,10 @@ CRAN_metrics_df = prepare_CRAN_data(filepath, CRAN_filename)
 output_filepath = '/Users/awashburn/Library/CloudStorage/OneDrive-BowdoinCollege/Documents/' \
                  'Mormino-Lab-Internship/Python-Projects/Actigraphy-Testing/timeSeries-actigraphy-csv-files/all-data-files/summary-metrics/bias-figs/'
 
-metric_to_compare = 'Acrophase'
+metric_to_compare = 'RA'
 CRAN_vs_pyActigraphy_metric_bias(CRAN_metrics_df, pyActigraphy_metrics_df, metric_to_compare, output_filepath)
+
+pyActigraphy_metric = 'kRA'
+CRAN_metric = 'L5'
+#CRAN_vs_pyActigraphy_two_metrics(CRAN_metrics_df, pyActigraphy_metrics_df, pyActigraphy_metric, CRAN_metric, output_filepath)
 
