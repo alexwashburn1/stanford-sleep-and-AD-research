@@ -229,10 +229,10 @@ pyActigraphy_df = read_and_prepare_pyActigraphy_data(filepath, pyActigraphy_file
 GGIR_df = read_and_prepare_GGIR_data(filepath, GGIR_filename)
 CRAN_df = read_and_prepare_CRAN_data(filepath, CRAN_filename)
 
-package_name = 'pyActigraphy'
-package_df = pyActigraphy_df
+package_name = 'GGIR'
+package_df = GGIR_df
 
-#IS_vs_IV(package_name, package_df)
+IS_vs_IV(package_name, package_df)
 #kRA_vs_IV(package_name, package_df)
-kRA_vs_RA(package_name, package_df)
+#kRA_vs_RA(package_name, package_df)
 
