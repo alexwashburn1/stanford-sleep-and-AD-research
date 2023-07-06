@@ -32,15 +32,7 @@ def LIDS_functionality_test(LIDS_obj, raw):
     :return:
     """
 
-    # filter out sleep bouts that are too long or too short
-    #LIDS_filtered = LIDS.filter()
-
-    # transform LIDS data using a LIDS transformation
-    LIDS_transformed = LIDS.lids_transform(LIDS_obj, ts=raw.data)
-
-    # calculate summary statistics for LIDS transformed data
-    summary_stats = LIDS_obj.lids_summary(LIDS_transformed, verbose=False)
-    print('summary stats: ', summary_stats)
+    
 
 
 
