@@ -118,8 +118,8 @@ def crespo_sleep_wake(raw):
 raw = read_input_data('78203_0000000613-timeSeries.csv.gz')  # the file with disrupted sleep patterns potentially present
 #Cole_Kripke_sleep_wake(raw)
 #roenneberg_sleep_wake(raw)
-#crespo_sleep_wake(raw)
-sadeh_sleep_wake(raw)
+crespo_sleep_wake(raw)
+#sadeh_sleep_wake(raw)
 #scripps_sleep_wake(raw)
 
 

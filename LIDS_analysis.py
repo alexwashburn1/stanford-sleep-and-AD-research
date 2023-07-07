@@ -32,7 +32,34 @@ def LIDS_functionality_test(LIDS_obj, raw):
     :return:
     """
 
-    
+    # transform LIDS data
+    lids_transformed = LIDS_obj.lids_transform(ts=raw.data)
+    LIDS_obj.lids_fit(lids=lids_transformed, nan_policy='omit', verbose=False)
+
+    # statistics
+    lids_period = LIDS_obj.lids_fit_results.params['period']
+    print('LIDS period: ', lids_period)
+
+    correlation_factor = LIDS_obj.lids_pearson_r(lids_transformed)
+    print('pearson correlation factor: ', correlation_factor)
+
+    lids_mri = LIDS_obj.lids_mri(lids_transformed)
+    print('Munich Rhythmicity Index: ', lids_mri)
+
+    lids_phases = LIDS_obj.lids_phases(lids_transformed)
+    print('Phases ', lids_phases)
+
+    # append the lids data to a list, since we want a list of series
+    lids_series_list = []
+    lids_series_list.append(lids_transformed)
+    #lids_summary = LIDS_obj.lids_summary(lids_series_list, verbose=False)
+    #print('lids summary: ', lids_summary)
+
+
+    # plot the LIDS transformed data
+    plt.plot(lids_transformed)
+
+    plt.show()
 
 
 
