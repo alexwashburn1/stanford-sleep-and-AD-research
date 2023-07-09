@@ -8,6 +8,7 @@ from pyActigraphy.analysis import Cosinor  # for cosinor analysis
 import csv
 import matplotlib.pyplot as plt
 from scipy.stats import linregress
+import plotly.graph_objects as go
 
 def prepare_pyActigraphy_data(filepath, pyActigraphy_filename):
     """
