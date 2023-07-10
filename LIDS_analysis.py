@@ -221,7 +221,7 @@ filename = '67067_0000000131-timeSeries.csv.gz'
 raw = read_input_data(filename)
 
 # DEBUG
-debug_LIDS_graph(raw)
+#debug_LIDS_graph(raw)
 
 # Create a LIDS object
 test_lids_obj = LIDS()
@@ -235,7 +235,7 @@ directory = '/Users/awashburn/Library/CloudStorage/OneDrive-BowdoinCollege/Docum
                  'Mormino-Lab-Internship/Python-Projects/Actigraphy-Testing/timeSeries-actigraphy-csv-files/all-data-files/'
 
 filenames = [filename for filename in os.listdir(directory) if filename.endswith('timeSeries.csv.gz')]
-#set_up_plot(filenames[:1])
+set_up_plot(filenames[1:2])
 
 
 
