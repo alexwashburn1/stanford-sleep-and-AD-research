@@ -14,6 +14,10 @@ import plotly.graph_objects as go
 # Create a LIDS object
 lids_obj = LIDS()
 
+# set max LIDS periods value
+MAX_PERIODS = 5
+max_x_value = MAX_PERIODS
+
 def read_input_data(filename):
     """
     Reads in a SINGLE cwa file for actigraphy analysis
@@ -89,35 +93,66 @@ def extract_activity_data(bout):
     return df[0]   # return the activity values
 
 
+def helper_unequal_sleep_wakes(lids_obj, raw):
+    """
+    Helper function for find_bouts that will skip a subject if the subject has an unequal record of sleeps and wakes.
+    :param lids_obj: lids object
+    :param raw: actigraphy data for the subject
+    :return:
+    """
+    (wakes, sleeps) = raw.Roenneberg_AoT()
+    if len(wakes) != len(sleeps):
+        return True
+    else:
+        return False
+
 def find_bouts(lids_obj, raw):
-    # extract sleep periods from the raw data from one file, via Crespo's AoT method
+    # extract sleep periods from the raw data from one file, via Roennebergs's AoT method
     # filter the extracted sleep periods for sleep periods too short or too long
     # transform activity data for each sleep period to inactivity data
 
-    (wakes, sleeps) = raw.Crespo_AoT()
-    # iterate through the wakes and sleeps and find the on and off times
-    sleep_wakes = []
-    for i in range(len(wakes)):
-        sleep_wakes.append((sleeps[i], wakes[i]))  # append the tuple of the on and off times
-    # iterate through the sleep_wakes and find the duration of each sleep. Append to sleep_bouts.
-    sleep_bouts = []
-    for i in range(len(sleep_wakes)):
-        sleep_bouts.append(extract_bout(raw.data, sleep_wakes[i][0], sleep_wakes[i][1]))
+    # use the helper function first to ensure that the number of wakes and the number of sleeps are not unequal. If they
+    # are, ignore the record.
+    if helper_unequal_sleep_wakes(lids_obj, raw) == True:
+        return [] # sleep bouts are unequal.
+    else:
+        (wakes, sleeps) = raw.Roenneberg_AoT() # default threshold = 0.15, according to <15% threshold used in LIDs methods (Winnebeck 2018)
+        # iterate through the wakes and sleeps and find the on and off times
+        sleep_wakes = []
+        #print("wakes and sleeps for debug: ", (wakes, sleeps))
+        #if len(wakes) != len(sleeps):
+            #print('length of the wakes: ', len(wakes))
+            #print('length of the sleeps: ', len(sleeps))
+            #if len(wakes) == len(sleeps) + 1:
+                #wakes = wakes[0:len(wakes)-1]
+                #print('bypassed the resizing length wakes / length sleeps')
+                #print('length of the wakes after resize: ', len(wakes))
+                #print('length of the sleeps after resize: ', len(sleeps))
+            #else:
+                #sleeps = sleeps[0:len(sleeps)-1]
+        #print('final check for length of wakes: ', len(wakes))
+        #print('final check for length of sleeps: ', len(sleeps))
+        for i in range(len(wakes)):
+            sleep_wakes.append((sleeps[i], wakes[i]))  # append the tuple of the on and off times
+        # iterate through the sleep_wakes and find the duration of each sleep. Append to sleep_bouts.
+        sleep_bouts = []
+        for i in range(len(sleep_wakes)):
+            sleep_bouts.append(extract_bout(raw.data, sleep_wakes[i][0], sleep_wakes[i][1]))
 
-    sleep_bouts_filtered = lids_obj.filter(ts=sleep_bouts, duration_min='6H')
-    #plot_bouts(sleep_bouts_filtered)
-    bouts_transformed = []
+        sleep_bouts_filtered = lids_obj.filter(ts=sleep_bouts, duration_min='6H')
+        #plot_bouts(sleep_bouts_filtered)
+        bouts_transformed = []
 
-    # transform only the sleep bouts that match the duration requirement.
-    for i in range(len(sleep_bouts_filtered)):
-        transform = True
-        if transform:
-            bouts_transformed.append(lids_obj.lids_transform(ts=sleep_bouts_filtered[i]))
-        else:   # don't transform
-            bouts_transformed.append(sleep_bouts_filtered[i])
+        # transform only the sleep bouts that match the duration requirement.
+        for i in range(len(sleep_bouts_filtered)):
+            transform = True
+            if transform:
+                bouts_transformed.append(lids_obj.lids_transform(ts=sleep_bouts_filtered[i]))
+            else:   # don't transform
+                bouts_transformed.append(sleep_bouts_filtered[i])
 
-    #plot_bouts(bouts_transformed)
-    return bouts_transformed
+        #plot_bouts(bouts_transformed)
+        return bouts_transformed
 
 def find_shortest_series(series):
     """
@@ -151,9 +186,14 @@ def mean_of_bouts(bouts):
 def per_file(filename):
     raw = read_input_data(filename)
     bouts = find_bouts(lids_obj, raw)
-    activity_data_mean = mean_of_bouts(bouts)
 
-    return (activity_data_mean, len(bouts))
+    # issue where the length of wakes and sleeps is unequal:
+    if bouts == []:
+        return (0, 0)
+    else:
+        # they are equal and all is well.
+        activity_data_mean = mean_of_bouts(bouts)
+        return (activity_data_mean, len(bouts))
 
 
 def set_up_plot(filenames):
@@ -166,8 +206,11 @@ def set_up_plot(filenames):
     total_bouts = 0
     for i in range(len(filenames)):
         (file_mean, n_bouts_in_file) = per_file(filenames[i])
-        file_means.append(file_mean)  # append the mean of the activity data for each file
-        total_bouts += n_bouts_in_file
+        if file_mean == 0 and n_bouts_in_file == 0:
+            total_bouts += n_bouts_in_file
+        else:
+            file_means.append(file_mean)  # append the mean of the activity data for each file
+            total_bouts += n_bouts_in_file
 
     length_of_shortest_array = find_shortest_series(file_means)
     print("length of shortest array: ", length_of_shortest_array)
@@ -281,9 +324,6 @@ def mean_of_bouts_normalized(lids_obj, bouts):
 
     normalized_bouts_array = np.array(normalized_bouts_list)
 
-    # find the max X value over all bouts
-    max_x_value = find_max_x_value(normalized_bouts_array)
-
     # define a number of bins
     N_BINS = 1000
     # divide the max X value by the number of bins
@@ -301,10 +341,16 @@ def mean_of_bouts_normalized(lids_obj, bouts):
     return y_averages
 
 def per_file_normalized(lids_obj, filename):
+    # issue where the length of wakes and sleeps is unequal:
+
     raw = read_input_data(filename)
     bouts = find_bouts(lids_obj, raw)
-    activity_data_mean = mean_of_bouts_normalized(lids_obj, bouts)
-    return (activity_data_mean, len(bouts))
+    if bouts == []:
+        return (0, 0)
+    else:
+        # they are equal and all is well.
+        activity_data_mean = mean_of_bouts_normalized(lids_obj, bouts)
+        return (activity_data_mean, len(bouts))
 
 def handle_files(filenames):
     file_means = []
@@ -342,10 +388,17 @@ def process_normalized(filenames):
     file_means = []
     total_bouts = 0
     for i in range(len(filenames)):
+        
+        print('file being processed: ', i)
+
+
         (file_mean, n_bouts_in_file) = per_file_normalized(lids_obj, filenames[i])
-        file_means.append(file_mean)  # append the mean of the activity data for each file
-        total_bouts += n_bouts_in_file
-        file_data_plot(file_mean, filenames[i])
+        if file_mean == 0 and n_bouts_in_file == 0:
+            total_bouts += n_bouts_in_file
+        else:
+            file_means.append(file_mean)  # append the mean of the activity data for each file
+            total_bouts += n_bouts_in_file
+            file_data_plot(file_mean, filenames[i])
     length_of_shortest_array = find_shortest_series(file_means)
     print("length of shortest array: ", length_of_shortest_array)
     for i in range(len(file_means)):
@@ -359,7 +412,11 @@ def process_normalized(filenames):
     n_files = len(file_means)
     file_mean = np.mean(file_means, axis=0)
     plt.title(f'mean of {total_bouts} bouts from {n_files} files')
-    plt.plot(file_mean)
+
+    # set x axis to show LIDS periods
+    xs = np.linspace(0, MAX_PERIODS, len(file_mean))
+
+    plt.plot(xs, file_mean)
 
 
 
