@@ -11,6 +11,9 @@ from scipy.stats import linregress
 from pyActigraphy.analysis import LIDS   #LIDS tools import
 import plotly.graph_objects as go
 
+# Create a LIDS object
+lids_obj = LIDS()
+
 def read_input_data(filename):
     """
     Reads in a SINGLE cwa file for actigraphy analysis
@@ -92,12 +95,11 @@ def find_bouts(lids_obj, raw):
     # transform activity data for each sleep period to inactivity data
 
     (wakes, sleeps) = raw.Crespo_AoT()
-    print('crespo AOT: ', raw.Crespo_AoT())
     # iterate through the wakes and sleeps and find the on and off times
     sleep_wakes = []
     for i in range(len(wakes)):
         sleep_wakes.append((sleeps[i], wakes[i]))  # append the tuple of the on and off times
-    # iterate through the sleep_wakes and find the duration of each sleep
+    # iterate through the sleep_wakes and find the duration of each sleep. Append to sleep_bouts.
     sleep_bouts = []
     for i in range(len(sleep_wakes)):
         sleep_bouts.append(extract_bout(raw.data, sleep_wakes[i][0], sleep_wakes[i][1]))
@@ -106,6 +108,7 @@ def find_bouts(lids_obj, raw):
     #plot_bouts(sleep_bouts_filtered)
     bouts_transformed = []
 
+    # transform only the sleep bouts that match the duration requirement.
     for i in range(len(sleep_bouts_filtered)):
         transform = True
         if transform:
@@ -147,7 +150,7 @@ def mean_of_bouts(bouts):
 
 def per_file(filename):
     raw = read_input_data(filename)
-    bouts = find_bouts(test_lids_obj, raw)
+    bouts = find_bouts(lids_obj, raw)
     activity_data_mean = mean_of_bouts(bouts)
 
     return (activity_data_mean, len(bouts))
@@ -185,34 +188,181 @@ def set_up_plot(filenames):
     plt.plot(file_mean)
     plt.show()
 
+def plot_bouts(bouts):
+    n_bouts = len(bouts)
+    for i in range(n_bouts):
+        fig = plt.figure()
+        fig.suptitle('bout ' + str(i+1))
+        to_plot = np.array(extract_activity_data(bouts[i]).tolist())
+        plt.plot(to_plot)
+    #plt.show()
 
-def debug_LIDS_graph(raw):
+
+def cosine_fit(lids_obj, bout):
     """
-    Debugging to confirm that the LIDS data is not inverted.
-    :param raw:
+    Fit a cosine to the bout data
+    :param lids_obj:
+    :param bout:
+    :return: period
+    """
+    lids_obj.lids_fit(lids=bout, nan_policy='omit', verbose=False)
+
+    # statistics
+    lids_period = lids_obj.lids_fit_results.params['period']
+    #print('LIDS period: ', lids_period)
+
+    correlation_factor = lids_obj.lids_pearson_r(bout)
+    #print('pearson correlation factor: ', correlation_factor)
+    return lids_period.value
+
+def normalize_to_period(activity, period):
+    """
+    Normalize the activity data to the period
+    :param activity: list of activity data
+    :param period: period of the activity data
+    :return: normalized activity data
+    """
+    normalized = []
+    for i in range(len(activity)):
+        normalized.append((i/period, activity[i]))
+
+    n2 = []
+    for i in range(len(normalized)):
+        n2.append(np.array(normalized[i]))
+    n3 = np.array(n2)
+    return n3
+
+def find_max_x_value(bouts):
+    max_x_value = 0
+    for bout in bouts:
+        last_x_y = bout[-1]
+        print (last_x_y)
+        max_x_value = max(max_x_value, last_x_y[0])
+    return max_x_value
+
+def find_y_average_in_bin(normalized_bouts_array, bin_x_start, bin_x_end):
+    """
+    Find the average y value in the bin
+    :param normalized_bouts_array: array of normalized bouts
+    :param bin_x_start: start of the bin
+    :param bin_x_end: end of the bin
+    :return: average y value in the bin
+    """
+    sum_y_values = 0
+    count = 0
+    for bout in normalized_bouts_array:
+        for x_y in bout:
+            if x_y[0] >= bin_x_start and x_y[0] < bin_x_end:
+                sum_y_values += x_y[1]
+                count += 1
+    if count == 0:
+        print('count is zero!')
+        return 0
+    else:
+        return sum_y_values / count
+
+def mean_of_bouts_normalized(lids_obj, bouts):
+    """
+    Find the mean of the normalized bouts
+    :param lids_obj:
+    :param bouts:
     :return:
     """
+    # extract the activity data from the bouts
+    activity_data = []
+    periods = []
+    for i in range(len(bouts)):  # iterate through the bouts
+        activity_data.append(extract_activity_data(bouts[i]))  # append the activity data from each bout
+        periods.append(cosine_fit(lids_obj, bouts[i]))
 
-    #crespo = raw.Crespo()
+    normalized_bouts_list= []
+    for i in range(len(activity_data)):
+        normalized_bouts_list.append(normalize_to_period(activity_data[i], periods[i]))
 
-    layout  = go.Layout(title="Rest/Activity detection",xaxis=dict(title="Date time"), yaxis=dict(title="Counts/period"), showlegend=False)
+    normalized_bouts_array = np.array(normalized_bouts_list)
 
-    # only show sleep > 6 hrs?
-    crespo_6h = raw.Crespo(alpha='6h')
-    crespo_zeta = raw.Crespo(estimate_zeta=True)
+    # find the max X value over all bouts
+    max_x_value = find_max_x_value(normalized_bouts_array)
 
-    # update the figure layout
-    layout.update(yaxis2=dict(overlaying='y', side='right'), showlegend=True);
+    # define a number of bins
+    N_BINS = 1000
+    # divide the max X value by the number of bins
+    x_increment = max_x_value / N_BINS
+    # iterate through the bins and find the average of the Y values in each bin
+    x = 0
+    y_averages = []
+    while x < max_x_value:
+        # find the average of the Y values
+        bin_x_start = x
+        bin_x_end = x + x_increment
+        y_average_in_bin = find_y_average_in_bin(normalized_bouts_array,bin_x_start, bin_x_end )
+        y_averages.append(y_average_in_bin)
+        x += x_increment
+    return y_averages
 
-    crespo_fig = go.Figure(data=[
-        go.Scatter(x=raw.data.index.astype(str), y=raw.data, name='Data'),
-        go.Scatter(x=crespo_zeta.index.astype(str), y=crespo_zeta, yaxis='y2', name='Crespo (Automatic)')
-    ], layout=layout)
+def per_file_normalized(lids_obj, filename):
+    raw = read_input_data(filename)
+    bouts = find_bouts(lids_obj, raw)
+    activity_data_mean = mean_of_bouts_normalized(lids_obj, bouts)
+    return (activity_data_mean, len(bouts))
 
-    crespo_fig.show()
+def handle_files(filenames):
+    file_means = []
+    total_bouts = 0
+    for i in range(len(filenames)):
+        (file_mean, n_bouts_in_file) = per_file(lids_obj, filenames[i])
+        file_means.append(file_mean)  # append the mean of the activity data for each file
+        total_bouts += n_bouts_in_file
+    length_of_shortest_array = find_shortest_series(file_means)
+    print("length of shortest array: ", length_of_shortest_array)
+    for i in range(len(file_means)):
+        file_means[i] = file_means[i][:length_of_shortest_array]
+    plt.figure()
+    # set label for x axis
+    plt.xlabel('time (30s)')
+    # set label for y axis
+    plt.ylabel('inactivity')
+    # set title
+    n_files = len(file_means)
+    file_mean = np.mean(file_means, axis=0)
+    plt.title(f'mean of {total_bouts} bouts from {n_files} files')
+    plt.plot(file_mean)
 
-    aot = raw.Crespo_AoT()
-    print('aot: ', aot)
+def file_data_plot(file_mean, filename):
+    plt.figure()
+    # set label for x axis
+    plt.xlabel('period')
+    # set label for y axis
+    plt.ylabel('inactivity')
+    # set title
+    plt.title(f'file {filename} mean')
+    plt.plot(file_mean)
+
+def process_normalized(filenames):
+    file_means = []
+    total_bouts = 0
+    for i in range(len(filenames)):
+        (file_mean, n_bouts_in_file) = per_file_normalized(lids_obj, filenames[i])
+        file_means.append(file_mean)  # append the mean of the activity data for each file
+        total_bouts += n_bouts_in_file
+        file_data_plot(file_mean, filenames[i])
+    length_of_shortest_array = find_shortest_series(file_means)
+    print("length of shortest array: ", length_of_shortest_array)
+    for i in range(len(file_means)):
+        file_means[i] = file_means[i][:length_of_shortest_array]
+    plt.figure()
+    # set label for x axis
+    plt.xlabel('period (TBD)')
+    # set label for y axis
+    plt.ylabel('inactivity')
+    # set title
+    n_files = len(file_means)
+    file_mean = np.mean(file_means, axis=0)
+    plt.title(f'mean of {total_bouts} bouts from {n_files} files')
+    plt.plot(file_mean)
+
+
+
 
 
 ''' FUNCTION CALLS '''
@@ -223,9 +373,6 @@ raw = read_input_data(filename)
 # DEBUG
 #debug_LIDS_graph(raw)
 
-# Create a LIDS object
-test_lids_obj = LIDS()
-
 # test lids functionality
 #LIDS_functionality_test(test_lids_obj, raw)
 
@@ -235,7 +382,10 @@ directory = '/Users/awashburn/Library/CloudStorage/OneDrive-BowdoinCollege/Docum
                  'Mormino-Lab-Internship/Python-Projects/Actigraphy-Testing/timeSeries-actigraphy-csv-files/all-data-files/'
 
 filenames = [filename for filename in os.listdir(directory) if filename.endswith('timeSeries.csv.gz')]
-set_up_plot(filenames[1:2])
+#set_up_plot(filenames[1:2])
+
+process_normalized(filenames)
+plt.show()
 
 
 
