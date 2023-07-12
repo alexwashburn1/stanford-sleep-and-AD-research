@@ -30,7 +30,7 @@ def read_input_data(filename):
                  'Mormino-Lab-Internship/Python-Projects/Actigraphy-Testing/timeSeries-actigraphy-csv-files/all-data-files/'
 
     # actually read in the data
-    raw = pyActigraphy.io.read_raw_bba(fpath + filename)
+    raw = pyActigraphy.io.read_raw_bba(fpath + filename, use_metadata_json=False)
 
     return raw
 
@@ -93,15 +93,18 @@ def extract_activity_data(bout):
     return df[0]   # return the activity values
 
 
-def helper_unequal_sleep_wakes(lids_obj, raw):
+def helper_unequal_sleep_wakes(lids_obj, raw, wakes, sleeps):
     """
     Helper function for find_bouts that will skip a subject if the subject has an unequal record of sleeps and wakes.
     :param lids_obj: lids object
     :param raw: actigraphy data for the subject
     :return:
     """
-    (wakes, sleeps) = raw.Roenneberg_AoT()
+
     if len(wakes) != len(sleeps):
+        print('length wakes: ', len(wakes))
+        print('length sleeps: ', len(sleeps))
+        print('wakes and sleeps: ', (wakes, sleeps))
         return True
     else:
         return False
@@ -113,46 +116,44 @@ def find_bouts(lids_obj, raw):
 
     # use the helper function first to ensure that the number of wakes and the number of sleeps are not unequal. If they
     # are, ignore the record.
-    if helper_unequal_sleep_wakes(lids_obj, raw) == True:
-        return [] # sleep bouts are unequal.
-    else:
-        (wakes, sleeps) = raw.Roenneberg_AoT() # default threshold = 0.15, according to <15% threshold used in LIDs methods (Winnebeck 2018)
-        # iterate through the wakes and sleeps and find the on and off times
-        sleep_wakes = []
-        #print("wakes and sleeps for debug: ", (wakes, sleeps))
-        #if len(wakes) != len(sleeps):
-            #print('length of the wakes: ', len(wakes))
-            #print('length of the sleeps: ', len(sleeps))
-            #if len(wakes) == len(sleeps) + 1:
-                #wakes = wakes[0:len(wakes)-1]
-                #print('bypassed the resizing length wakes / length sleeps')
-                #print('length of the wakes after resize: ', len(wakes))
-                #print('length of the sleeps after resize: ', len(sleeps))
-            #else:
-                #sleeps = sleeps[0:len(sleeps)-1]
-        #print('final check for length of wakes: ', len(wakes))
-        #print('final check for length of sleeps: ', len(sleeps))
-        for i in range(len(wakes)):
-            sleep_wakes.append((sleeps[i], wakes[i]))  # append the tuple of the on and off times
-        # iterate through the sleep_wakes and find the duration of each sleep. Append to sleep_bouts.
-        sleep_bouts = []
-        for i in range(len(sleep_wakes)):
-            sleep_bouts.append(extract_bout(raw.data, sleep_wakes[i][0], sleep_wakes[i][1]))
 
-        sleep_bouts_filtered = lids_obj.filter(ts=sleep_bouts, duration_min='6H')
-        #plot_bouts(sleep_bouts_filtered)
-        bouts_transformed = []
+    (wakes, sleeps) = raw.Roenneberg_AoT()
 
-        # transform only the sleep bouts that match the duration requirement.
-        for i in range(len(sleep_bouts_filtered)):
-            transform = True
-            if transform:
-                bouts_transformed.append(lids_obj.lids_transform(ts=sleep_bouts_filtered[i]))
-            else:   # don't transform
-                bouts_transformed.append(sleep_bouts_filtered[i])
+    if helper_unequal_sleep_wakes(lids_obj, raw, wakes, sleeps) == True:
+            # check if there is an extra wake value at the beginning
+        if wakes[0] < sleeps[0]:
+            wakes = wakes[1:]
+
+    # default threshold = 0.15, according to <15% threshold used in LIDs methods (Winnebeck 2018)
+    # iterate through the wakes and sleeps and find the on and off times
+    sleep_wakes = []
+    print('length sleeps: ', len(sleeps))
+    print('length of the wakes: ', len(wakes))
+    for i in range(len(wakes)):
+        sleep_wakes.append((sleeps[i], wakes[i]))  # append the tuple of the on and off times
+    # iterate through the sleep_wakes and find the duration of each sleep. Append to sleep_bouts.
+    sleep_bouts = []
+    for i in range(len(sleep_wakes)):
+        sleep_bouts.append(extract_bout(raw.data, sleep_wakes[i][0], sleep_wakes[i][1]))
+
+    sleep_bouts_filtered = lids_obj.filter(ts=sleep_bouts, duration_min='3H', duration_max='12H')
+
+    # resample/downscale the sleep bouts to have 10 minute bins
+    sleep_bouts_filtered = resample_bouts(sleep_bouts_filtered)
+
+    #plot_bouts(sleep_bouts_filtered)
+    bouts_transformed = []
+
+    # transform only the sleep bouts that match the duration requirement.
+    for i in range(len(sleep_bouts_filtered)):
+        transform = True
+        if transform:
+            bouts_transformed.append(lids_obj.lids_transform(ts=sleep_bouts_filtered[i]))
+        else:   # don't transform
+            bouts_transformed.append(sleep_bouts_filtered[i])
 
         #plot_bouts(bouts_transformed)
-        return bouts_transformed
+    return bouts_transformed
 
 def find_shortest_series(series):
     """
@@ -205,8 +206,11 @@ def set_up_plot(filenames):
     file_means = []
     total_bouts = 0
     for i in range(len(filenames)):
+        print('processing file: ', i)
         (file_mean, n_bouts_in_file) = per_file(filenames[i])
-        if file_mean == 0 and n_bouts_in_file == 0:
+        print('file mean: ', file_mean)
+        print('n_bouts_in_file: ', n_bouts_in_file)
+        if type(file_mean) == int and n_bouts_in_file == 0:    # weird debug to get around file_means issue
             total_bouts += n_bouts_in_file
         else:
             file_means.append(file_mean)  # append the mean of the activity data for each file
@@ -215,20 +219,45 @@ def set_up_plot(filenames):
     length_of_shortest_array = find_shortest_series(file_means)
     print("length of shortest array: ", length_of_shortest_array)
 
-    for i in range(len(file_means)):
-        file_means[i] = file_means[i][:length_of_shortest_array]
+    # pad arrays shorter than 6 hours with zeros
+    padded_file_means = []
+    for file in file_means:
+        file_length = len(file)
+        target_length = 36 # equivalent to 36 * 10 min = 360 minutes = 6 hours
+        if file_length < target_length:
+            # Calculate the amount of padding needed
+            padding = target_length - file_length
+
+            # Pad the array with zeros on the right side only, a constant value
+            padded_array = np.pad(file, (0, padding), 'constant')
+            padded_file_means.append(padded_array)
+        else:
+            padded_file_means.append(file)
 
     plt.figure()
     # set label for x axis
-    plt.xlabel('time (30s)')
+    plt.xlabel('# 10 minute increments since sleep onset')
     # set label for y axis
     plt.ylabel('inactivity')
     # set title
-    n_files = len(file_means)
+    n_files = len(padded_file_means)
 
-    file_mean = np.mean(file_means, axis=0)
+    # calculate the mean for the plot
+    total_mean = np.zeros(36) # 36 is the length of each file. We want to average across all files, manually
+    for i in range(len(total_mean)):
+        sum = 0
+        count = 0
+        for fmean in padded_file_means:
+            val = fmean[i]
+            if val != 0:
+                sum += val
+                count += 1
+        if count != 0:
+            total_mean[i] = sum / count
+
+
     plt.title(f'mean of {total_bouts} bouts from {n_files} files')
-    plt.plot(file_mean)
+    plt.plot(total_mean)
     plt.show()
 
 def plot_bouts(bouts):
@@ -299,7 +328,6 @@ def find_y_average_in_bin(normalized_bouts_array, bin_x_start, bin_x_end):
                 sum_y_values += x_y[1]
                 count += 1
     if count == 0:
-        print('count is zero!')
         return 0
     else:
         return sum_y_values / count
@@ -325,7 +353,7 @@ def mean_of_bouts_normalized(lids_obj, bouts):
     normalized_bouts_array = np.array(normalized_bouts_list)
 
     # define a number of bins
-    N_BINS = 1000
+    N_BINS = 50 # CHANGE THIS BACK - to 1000 for bins = 30 sec if applicable
     # divide the max X value by the number of bins
     x_increment = max_x_value / N_BINS
     # iterate through the bins and find the average of the Y values in each bin
@@ -384,12 +412,25 @@ def file_data_plot(file_mean, filename):
     plt.title(f'file {filename} mean')
     plt.plot(file_mean)
 
+def resample_bouts(sleep_bouts):
+    """
+    Resamples the bouts to 10 minute intervals
+    :param sleep_bouts:  time series of sleep bouts
+    :return: time series of sleep bouts resampled to 10 minute intervals
+    """
+    bouts_resampled = []
+    for i in range(len(sleep_bouts)):
+        resampled = sleep_bouts[i].resample("10Min").sum()
+        bouts_resampled.append(resampled)
+    return bouts_resampled
+
 def process_normalized(filenames):
     file_means = []
     total_bouts = 0
     for i in range(len(filenames)):
-        
+
         print('file being processed: ', i)
+        print('associated filename: ', filenames[i])
 
 
         (file_mean, n_bouts_in_file) = per_file_normalized(lids_obj, filenames[i])
@@ -427,6 +468,9 @@ def process_normalized(filenames):
 filename = '67067_0000000131-timeSeries.csv.gz'
 raw = read_input_data(filename)
 
+print('raw type: ', type(raw))
+print('raw type data: ', type(raw.data))
+
 # DEBUG
 #debug_LIDS_graph(raw)
 
@@ -438,10 +482,11 @@ raw = read_input_data(filename)
 directory = '/Users/awashburn/Library/CloudStorage/OneDrive-BowdoinCollege/Documents/' \
                  'Mormino-Lab-Internship/Python-Projects/Actigraphy-Testing/timeSeries-actigraphy-csv-files/all-data-files/'
 
-filenames = [filename for filename in os.listdir(directory) if filename.endswith('timeSeries.csv.gz')]
-#set_up_plot(filenames[1:2])
+filenames = [filename for filename in os.listdir(directory) if filename.endswith('timeSeries.csv.gz')]      # CHANGE THIS BACK - to 'timeSeries.csv.gz'
 
-process_normalized(filenames)
+set_up_plot(filenames)  # FUNCTION CALL FOR NON-NORMALIZED LIDS GRAPH
+
+#process_normalized(filenames)  # FUNCTION CALL FOR NORMALIZED LIDS GRAPH
 plt.show()
 
 
