@@ -193,13 +193,23 @@ def per_file(filename):
     raw = read_input_data(filename)
     bouts = find_bouts(lids_obj, raw)
 
-    # issue where the length of wakes and sleeps is unequal:
-    if bouts == []:
-        return (0, 0)
-    else:
-        # they are equal and all is well.
-        activity_data_mean = mean_of_bouts(bouts)    # COMMENT OUT THE INDEX
-        return (activity_data_mean, len(bouts))
+    # find the mean bout
+    activity_data_mean = mean_of_bouts(bouts)    # COMMENT OUT THE INDEX
+    return (activity_data_mean, len(bouts))
+
+
+def per_file_no_mean(filename):
+    """
+    process each file and do not return one mean bout, but a list of all of the bouts
+    :param filename: the file to generate a list of bouts for.
+    :return: a list of all of the bouts in the file, and the number of bouts in the file.
+    """
+
+    raw = read_input_data(filename)
+    bouts = find_bouts(lids_obj, raw)
+
+    return (bouts, len(bouts))
+
 
 
 def set_up_plot(filenames):
@@ -208,33 +218,33 @@ def set_up_plot(filenames):
     :param filenames: the filenames to include in the ultimate LIDS graph
     :return:
     """
-    file_means = []
+    all_bouts_all_files = []
     total_bouts = 0
     for i in range(len(filenames)):
         print('processing file: ', i)
-        (file_mean, n_bouts_in_file) = per_file(filenames[i])
-        print('file mean: ', file_mean)
+        (all_bouts_from_file, n_bouts_in_file) = per_file_no_mean(filenames[i])
         print('n_bouts_in_file: ', n_bouts_in_file)
-        if type(file_mean) == int and n_bouts_in_file == 0:    # weird debug to get around file_means issue
-            total_bouts += n_bouts_in_file
-        else:
-            file_means.append(file_mean)  # append the mean of the activity data for each file
-            total_bouts += n_bouts_in_file
+
+        for i in range(len(all_bouts_from_file)):
+            # append the bouts from each file to the total list of bouts
+            all_bouts_all_files.append(all_bouts_from_file[i])
+
+        total_bouts += n_bouts_in_file
 
     # pad arrays shorter than 6 hours with zeros
-    padded_file_means = []
-    for file in file_means:
-        file_length = len(file)
+    padded_bouts = []
+    for bout in all_bouts_all_files:
+        bout_length = len(bout)
         target_length = 36 # equivalent to 36 * 10 min = 360 minutes = 6 hours
-        if file_length < target_length:
+        if bout_length < target_length:
             # Calculate the amount of padding needed
-            padding = target_length - file_length
+            padding = target_length - bout_length
 
             # Pad the array with zeros on the right side only, a constant value
-            padded_array = np.pad(file, (0, padding), 'constant')
-            padded_file_means.append(padded_array)
+            padded_array = np.pad(bout, (0, padding), 'constant')
+            padded_bouts.append(padded_array)
         else:
-            padded_file_means.append(file)
+            padded_bouts.append(bout)
 
     plt.figure()
 
@@ -245,26 +255,50 @@ def set_up_plot(filenames):
     plt.xlabel('minutes since sleep onset')
     # set label for y axis
     plt.ylabel('inactivity')
-    # set title
-    n_files = len(padded_file_means)
 
-    # calculate the mean for the plot
+    # calculate the mean of all the bouts, for the plot
     total_mean = np.zeros(36) # 36 is the length of each file. We want to average across all files, manually
     for i in range(len(total_mean)):
         sum = 0
         count = 0
-        for fmean in padded_file_means:
-            val = fmean[i]
+        for bout in padded_bouts:
+            val = bout[i]
             if val != 0:
                 sum += val
                 count += 1
         if count != 0:
             total_mean[i] = sum / count
 
-    plt.title(f'mean of {total_bouts} bouts from {n_files} files')
+    plt.title(f'mean of {total_bouts} bouts')
     plt.plot(x_axis_minutes, total_mean)
-    print('total mean: ', total_mean)
     plt.show()
+
+    return padded_bouts
+
+def box_plot_outliers(padded_bouts):
+    """
+    Plot 5 box plots for the first 50 minutes of sleep onset from the bouts, to determine outliers.
+    :param padded_bouts:
+    :return:
+    """
+    # Transpose the data to have values from each bout in separate columns
+    transposed_data = np.transpose(padded_bouts)
+
+    # Extract the first five columns
+    first_five_values = transposed_data[:5]
+
+    # Create the box plot
+    plt.boxplot(first_five_values)
+
+    # Set labels and title
+    plt.xlabel('10 minute interval')
+    plt.ylabel('Inactivity')
+    plt.title('Box Plot of First Five Values from Sleep Bouts')
+
+    print('done')
+
+    plt.show()
+
 
 def plot_bouts(bouts):
     n_bouts = len(bouts)
@@ -376,37 +410,11 @@ def mean_of_bouts_normalized(lids_obj, bouts):
 
 def per_file_normalized(lids_obj, filename):
     # issue where the length of wakes and sleeps is unequal:
-
     raw = read_input_data(filename)
     bouts = find_bouts(lids_obj, raw)
-    if bouts == []:
-        return (0, 0)
-    else:
-        # they are equal and all is well.
-        activity_data_mean = mean_of_bouts_normalized(lids_obj, bouts)
-        return (activity_data_mean, len(bouts))
 
-def handle_files(filenames):
-    file_means = []
-    total_bouts = 0
-    for i in range(len(filenames)):
-        (file_mean, n_bouts_in_file) = per_file(lids_obj, filenames[i])
-        file_means.append(file_mean)  # append the mean of the activity data for each file
-        total_bouts += n_bouts_in_file
-    length_of_shortest_array = find_shortest_series(file_means)
-    print("length of shortest array: ", length_of_shortest_array)
-    for i in range(len(file_means)):
-        file_means[i] = file_means[i][:length_of_shortest_array]
-    plt.figure()
-    # set label for x axis
-    plt.xlabel('time (30s)')
-    # set label for y axis
-    plt.ylabel('inactivity')
-    # set title
-    n_files = len(file_means)
-    file_mean = np.mean(file_means, axis=0)
-    plt.title(f'mean of {total_bouts} bouts from {n_files} files')
-    plt.plot(file_mean)
+    activity_data_mean = mean_of_bouts_normalized(lids_obj, bouts)
+    return (activity_data_mean, len(bouts))
 
 def file_data_plot(file_mean, filename):
     plt.figure()
@@ -466,49 +474,6 @@ def process_normalized(filenames):
     plt.plot(xs, file_mean)
 
 
-def LIDS_period_histogram(filenames):
-    """
-    Create a histogram for distribution of LIDS periods.
-    :param LIDS_obj:
-    :param filenames:
-    :return:
-    """
-
-    all_mean_LIDS_periods = []
-
-    for file in filenames:
-        # generate raw data
-        raw = read_input_data(filename)
-
-        # transform raw into LIDS data
-        lids_transformed = lids_obj.lids_transform(ts=raw.data)
-        lids_transformed = lids_transformed.resample("10Min").sum() # downscale to 10Min bins
-        lids_obj.lids_fit(lids=lids_transformed, nan_policy='omit', verbose=False) # perform the LIDS fit on the data.
-
-        # determine the LIDS period
-        lids_period = lids_obj.lids_fit_results.params['period']
-
-        # add to list of all mean LIDS periods from the files
-        all_mean_LIDS_periods.append(lids_period)
-
-        # plot a histogram of all the LIDS periods and their distributions
-        # Define the bin edges based on the period
-        bin_edges = np.arange(min(all_mean_LIDS_periods), max(all_mean_LIDS_periods) + 2) - 0.5
-
-    print('all lids periods: ', all_mean_LIDS_periods)
-
-    # Create the histogram
-    plt.hist(all_mean_LIDS_periods, bins=bin_edges, edgecolor='black')
-
-    # Set the labels and title
-    plt.xlabel('Period (10-minute intervals)')
-    plt.ylabel('Count')
-    plt.title('Histogram of Periods')
-
-    # Show the plot
-    #plt.show()
-
-
 
 
 
@@ -532,21 +497,9 @@ directory = '/Users/awashburn/Library/CloudStorage/OneDrive-BowdoinCollege/Docum
 
 filenames = [filename for filename in os.listdir(directory) if filename.endswith('timeSeries.csv.gz')]      # CHANGE THIS BACK - to 'timeSeries.csv.gz'
 
-set_up_plot(filenames[0:10])  # FUNCTION CALL FOR NON-NORMALIZED LIDS GRAPH
+padded_bouts = set_up_plot(filenames)  # FUNCTION CALL FOR NON-NORMALIZED LIDS GRAPH
+
+box_plot_outliers(padded_bouts)
 
 #process_normalized(filenames)  # FUNCTION CALL FOR NORMALIZED LIDS GRAPH
 plt.show()
-
-## LIDS histogram of period lengths ##
-#LIDS_period_histogram(filenames[1:10])
-
-
-
-
-
-
-
-
-
-
-
