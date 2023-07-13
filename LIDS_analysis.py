@@ -193,7 +193,7 @@ def per_file(filename):
         return (0, 0)
     else:
         # they are equal and all is well.
-        activity_data_mean = mean_of_bouts(bouts)
+        activity_data_mean = mean_of_bouts(bouts)    # COMMENT OUT THE INDEX
         return (activity_data_mean, len(bouts))
 
 
@@ -255,9 +255,9 @@ def set_up_plot(filenames):
         if count != 0:
             total_mean[i] = sum / count
 
-
     plt.title(f'mean of {total_bouts} bouts from {n_files} files')
-    plt.plot(total_mean)
+    plt.plot(total_mean) # COMMENT IN
+    print('total mean: ', total_mean)
     plt.show()
 
 def plot_bouts(bouts):
@@ -460,6 +460,50 @@ def process_normalized(filenames):
     plt.plot(xs, file_mean)
 
 
+def LIDS_period_histogram(filenames):
+    """
+    Create a histogram for distribution of LIDS periods.
+    :param LIDS_obj:
+    :param filenames:
+    :return:
+    """
+
+    all_mean_LIDS_periods = []
+
+    for file in filenames:
+        # generate raw data
+        raw = read_input_data(filename)
+
+        # transform raw into LIDS data
+        lids_transformed = lids_obj.lids_transform(ts=raw.data)
+        lids_transformed = lids_transformed.resample("10Min").sum() # downscale to 10Min bins
+        lids_obj.lids_fit(lids=lids_transformed, nan_policy='omit', verbose=False) # perform the LIDS fit on the data.
+
+        # determine the LIDS period
+        lids_period = lids_obj.lids_fit_results.params['period']
+
+        # add to list of all mean LIDS periods from the files
+        all_mean_LIDS_periods.append(lids_period)
+
+        # plot a histogram of all the LIDS periods and their distributions
+        # Define the bin edges based on the period
+        bin_edges = np.arange(min(all_mean_LIDS_periods), max(all_mean_LIDS_periods) + 2) - 0.5
+
+    print('all lids periods: ', all_mean_LIDS_periods)
+
+    # Create the histogram
+    plt.hist(all_mean_LIDS_periods, bins=bin_edges, edgecolor='black')
+
+    # Set the labels and title
+    plt.xlabel('Period (10-minute intervals)')
+    plt.ylabel('Count')
+    plt.title('Histogram of Periods')
+
+    # Show the plot
+    #plt.show()
+
+
+
 
 
 
@@ -471,11 +515,9 @@ raw = read_input_data(filename)
 print('raw type: ', type(raw))
 print('raw type data: ', type(raw.data))
 
-# DEBUG
-#debug_LIDS_graph(raw)
 
 # test lids functionality
-#LIDS_functionality_test(test_lids_obj, raw)
+#LIDS_functionality_test(lids_obj, raw)
 
 
 #### LIDS GRAPHICAL ANALYSIS ####
@@ -484,10 +526,13 @@ directory = '/Users/awashburn/Library/CloudStorage/OneDrive-BowdoinCollege/Docum
 
 filenames = [filename for filename in os.listdir(directory) if filename.endswith('timeSeries.csv.gz')]      # CHANGE THIS BACK - to 'timeSeries.csv.gz'
 
-set_up_plot(filenames)  # FUNCTION CALL FOR NON-NORMALIZED LIDS GRAPH
+set_up_plot(filenames[48:49])  # FUNCTION CALL FOR NON-NORMALIZED LIDS GRAPH
 
 #process_normalized(filenames)  # FUNCTION CALL FOR NORMALIZED LIDS GRAPH
 plt.show()
+
+## LIDS histogram of period lengths ##
+#LIDS_period_histogram(filenames[1:30])
 
 
 
