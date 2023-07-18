@@ -317,11 +317,11 @@ def plot_outlier_bouts(outliers_indices, padded_bouts):
     """
     # outlier indices: 1 = 1213, 2 = 1163, 3 = 520 (for the entire data set)
     # extract individual bouts
-    bout_1 = padded_bouts[outliers_indices[0]]
+    bout_1 = padded_bouts[1213]
     print('length bout 1: ', len(bout_1))
-    bout_2 = padded_bouts[outliers_indices[1]]
+    bout_2 = padded_bouts[1163]
     print('length bout 2: ', len(bout_2))
-    bout_3 = padded_bouts[outliers_indices[2]]
+    bout_3 = padded_bouts[520]
     print('length bout 3: ', len(bout_3))
 
     bouts_data = [bout_1, bout_2, bout_3]
