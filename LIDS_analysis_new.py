@@ -138,8 +138,8 @@ def find_bouts(lids_obj, raw):
 
     sleep_bouts_filtered = lids_obj.filter(ts=sleep_bouts, duration_min='3H', duration_max='12H')
 
-    # resample/downscale the sleep bouts to have 10 minute bins
-    sleep_bouts_filtered = resample_bouts(sleep_bouts_filtered)
+    # resample/downscale the sleep bouts to have 10 minute bins  - COMMENT BACK IN
+    #sleep_bouts_filtered = resample_bouts(sleep_bouts_filtered)
 
     #plot_bouts(sleep_bouts_filtered)
     bouts_transformed = []
@@ -236,7 +236,7 @@ def set_up_plot(filenames):
     padded_bouts = []
     for bout in all_bouts_all_files:
         bout_length = len(bout)
-        target_length = 36 # equivalent to 36 * 10 min = 360 minutes = 6 hours
+        target_length = 720 # COMMENT BACK IN - change back to 36
         if bout_length < target_length:
             # Calculate the amount of padding needed
             padding = target_length - bout_length
@@ -245,12 +245,12 @@ def set_up_plot(filenames):
             padded_array = np.pad(bout, (0, padding), 'constant')
             padded_bouts.append(padded_array)
         else:
-            padded_bouts.append(bout[0:36])
+            padded_bouts.append(bout[0:720]) # COMMENT BACK IN - change to 0:36
 
     plt.figure()
 
     # Define the x-axis values in minutes, to show up as singular minutes instead of 10-minute increments
-    x_axis_minutes = np.arange(0, 360, 10)  # Assuming 36 data points with 10-minute increments
+    x_axis_minutes = np.arange(0, 360, 0.5)  # COMMENT BACK IN - change this to 0, 360, 10
 
     # set label for x axis
     plt.xlabel('minutes since sleep onset')
@@ -258,7 +258,7 @@ def set_up_plot(filenames):
     plt.ylabel('inactivity')
 
     # calculate the mean of all the bouts, for the plot
-    total_mean = np.zeros(36) # 36 is the length of each file. We want to average across all files, manually
+    total_mean = np.zeros(720) # COMMENT BACK IN - change this to 36
     for i in range(len(total_mean)):
         sum = 0
         count = 0
@@ -283,8 +283,6 @@ def box_plot_outliers(padded_bouts):
     :return:
     """
     # Find the number of bouts and the length of each bout
-
-
     bout_length = len(padded_bouts[0])  # Since all bouts have the same length
 
     # Convert padded_bouts to a 2D numpy array
@@ -306,8 +304,51 @@ def box_plot_outliers(padded_bouts):
 
     plt.show()
 
+    print('outliers indices: ', outliers_indices)
     return outliers_indices
 
+
+def plot_outlier_bouts(outliers_indices, padded_bouts):
+    """
+    Plots the LIDS transformed bouts for the the 3 highest outliers for the first epoch (10 minute interval)
+    :param outliers_indices: the indices of the outlier bouts
+    :param padded_bouts: all the bouts (to be indexed with the outlier indices)
+    :return:
+    """
+    # outlier indices: 1 = 1213, 2 = 1163, 3 = 520 (for the entire data set)
+    # extract individual bouts
+    bout_1 = padded_bouts[outliers_indices[0]]
+    print('length bout 1: ', len(bout_1))
+    bout_2 = padded_bouts[outliers_indices[1]]
+    print('length bout 2: ', len(bout_2))
+    bout_3 = padded_bouts[outliers_indices[2]]
+    print('length bout 3: ', len(bout_3))
+
+    bouts_data = [bout_1, bout_2, bout_3]
+    n_bouts = len(bouts_data)
+    colors = ['red', 'blue', 'green']
+
+    # Create individual subplots for each bout
+    fig, axes = plt.subplots(n_bouts, 1, figsize=(8, 6))
+
+    # define x axis minutes for even x axis
+    x_axis_minutes = np.arange(0, 360, 0.5)  # COMMENT BACK IN - change to (0, 360, 10)
+
+    # Loop over each subplot and plot the inactivity data for each bout
+    for i, (ax, bout) in enumerate(zip(axes, bouts_data)):
+        ax.plot(x_axis_minutes, bout, color=colors[i])
+        ax.set_title(f'Bout {i + 1}')
+        ax.set_ylabel('Inactivity')
+        ax.set_ylim(0, max(max(bout) for bout in bouts_data))  # Set y-axis limits for all subplots
+
+    axes[-1].set_xlabel('Time since sleep onset (minutes)')  # Set x-axis label for the last subplot
+
+    # Adjust layout to avoid overlap of subplots
+    plt.tight_layout()
+
+    plt.show()
+
+    plt.show()
 
 
 
@@ -511,7 +552,10 @@ filenames = [filename for filename in os.listdir(directory) if filename.endswith
 padded_bouts = set_up_plot(filenames)  # FUNCTION CALL FOR NON-NORMALIZED LIDS GRAPH
 
 outlier_indices = box_plot_outliers(padded_bouts)
-#print('outlier indices: ', outlier_indices)
+
+plot_outlier_bouts(outlier_indices, padded_bouts)
+
+
 
 #process_normalized(filenames)  # FUNCTION CALL FOR NORMALIZED LIDS GRAPH
 plt.show()
