@@ -12,8 +12,6 @@ def convert_xlsx_to_csv_formatting(excel_file, REDCAP_csv_file, demographics_dat
     :param demographics_data_file: file that contains the filename corresponding to the subject IDs in the excel file.
     :return:
     """
-
-
     # read in the csv and xlsx files
     filepath = '/Users/awashburn/Library/CloudStorage/OneDrive-BowdoinCollege/Documents/' \
                  'Mormino-Lab-Internship/Python-Projects/Actigraphy-Testing/subjective-sleep-logs/'
@@ -159,8 +157,8 @@ def convert_xlsx_to_csv_formatting(excel_file, REDCAP_csv_file, demographics_dat
     excel_file_df.drop("2. Tried to go to sleep", axis=1, inplace=True)
     excel_file_df.drop("5. Wake up", axis=1, inplace=True)
 
-    # 6) Add a column for recruited study
-
+    # 6) DELETE ROWS WITH NO FILENAME
+    excel_file_df.dropna(subset=["File Name"], inplace=True)
 
     ## EXPORT THE CSV ##
     excel_file_df.to_csv(filepath+'Sleep_Questionnaire_Data_Entry_July2023_REDCAP_fixed.csv', index=False)

@@ -215,6 +215,7 @@ def per_file_no_mean(filename):
 def set_up_plot(filenames):
     """
     Takes the mean over several bouts for several files. Filters all files according to the shortest record. Plots.
+    Note: all bouts are trimmed to be 6 hours. If there are shorter, they are padded with zeros.
     :param filenames: the filenames to include in the ultimate LIDS graph
     :return:
     """
@@ -244,7 +245,7 @@ def set_up_plot(filenames):
             padded_array = np.pad(bout, (0, padding), 'constant')
             padded_bouts.append(padded_array)
         else:
-            padded_bouts.append(bout)
+            padded_bouts.append(bout[0:36])
 
     plt.figure()
 
@@ -281,11 +282,19 @@ def box_plot_outliers(padded_bouts):
     :param padded_bouts:
     :return:
     """
-    # Transpose the data to have values from each bout in separate columns
-    transposed_data = np.transpose(padded_bouts)
+    # Find the number of bouts and the length of each bout
 
-    # Extract the first five columns
-    first_five_values = transposed_data[:5]
+
+    bout_length = len(padded_bouts[0])  # Since all bouts have the same length
+
+    # Convert padded_bouts to a 2D numpy array
+    padded_bouts_array = np.array(padded_bouts)
+
+    # Extract the first five values from each bout
+    first_five_values = padded_bouts_array[:, :5]
+
+    # Get the indices of the 3 highest outliers for bout #1 (first column)
+    outliers_indices = np.argsort(first_five_values[:, 0])[-3:]
 
     # Create the box plot
     plt.boxplot(first_five_values)
@@ -295,9 +304,11 @@ def box_plot_outliers(padded_bouts):
     plt.ylabel('Inactivity')
     plt.title('Box Plot of First Five Values from Sleep Bouts')
 
-    print('done')
-
     plt.show()
+
+    return outliers_indices
+
+
 
 
 def plot_bouts(bouts):
@@ -499,7 +510,8 @@ filenames = [filename for filename in os.listdir(directory) if filename.endswith
 
 padded_bouts = set_up_plot(filenames)  # FUNCTION CALL FOR NON-NORMALIZED LIDS GRAPH
 
-box_plot_outliers(padded_bouts)
+outlier_indices = box_plot_outliers(padded_bouts)
+#print('outlier indices: ', outlier_indices)
 
 #process_normalized(filenames)  # FUNCTION CALL FOR NORMALIZED LIDS GRAPH
 plt.show()
