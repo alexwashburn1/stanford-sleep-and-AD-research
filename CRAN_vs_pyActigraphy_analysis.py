@@ -87,8 +87,8 @@ def CRAN_vs_pyActigraphy_metric_bias(CRAN_df, pyActigraphy_df, metric_to_compare
 
     # Set axis labels and title
     plt.xlabel('pyActigraphy ' + metric_to_compare)
-    plt.ylabel('CRAN ' + metric_to_compare)
-    plt.title('Comparison of pyActigraphy vs CRAN for {}'.format(metric_to_compare))
+    plt.ylabel('nparACT ' + metric_to_compare)
+    plt.title('Comparison of pyActigraphy vs nparACT for {}'.format(metric_to_compare))
 
     # Add a line of best fit (dotted) using filtered values
     line = slope * x_filtered + intercept
@@ -102,7 +102,7 @@ def CRAN_vs_pyActigraphy_metric_bias(CRAN_df, pyActigraphy_df, metric_to_compare
              transform=plt.gcf().transFigure)
 
     # Determine the minimum and maximum values with a margin
-    margin = 0.001  # Adjust the margin as needed
+    margin = 0.18  # Adjust the margin as needed
     min_value = min(min(x_values), min(y_values))
     max_value = max(max(x_values), max(y_values))
     xlim = (min_value * (1 - margin), max_value * (1 + margin))
@@ -172,7 +172,7 @@ def CRAN_vs_pyActigraphy_two_metrics(CRAN_df, pyActigraphy_df, pyActigraphy_metr
              transform=plt.gcf().transFigure)
 
     # Determine the minimum and maximum values with a margin
-    margin = 0.001  # Adjust the margin as needed
+    margin = 0.01  # Adjust the margin as needed
     min_value = min(min(x_values), min(y_values))
     max_value = max(max(x_values), max(y_values))
     xlim = (min_value * (1 - margin), max_value * (1 + margin))
@@ -208,7 +208,7 @@ CRAN_metrics_df = prepare_CRAN_data(filepath, CRAN_filename)
 output_filepath = '/Users/awashburn/Library/CloudStorage/OneDrive-BowdoinCollege/Documents/' \
                  'Mormino-Lab-Internship/Python-Projects/Actigraphy-Testing/timeSeries-actigraphy-csv-files/all-data-files/summary-metrics/bias-figs/'
 
-metric_to_compare = 'RA'
+metric_to_compare = 'Mesor'
 CRAN_vs_pyActigraphy_metric_bias(CRAN_metrics_df, pyActigraphy_metrics_df, metric_to_compare, output_filepath)
 
 pyActigraphy_metric = 'kRA'

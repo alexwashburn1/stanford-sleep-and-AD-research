@@ -89,9 +89,9 @@ def GGIR_vs_CRAN_metric_bias(CRAN_df, GGIR_df, metric_to_compare, output_filepat
     plt.scatter(x_filtered, y_filtered)
 
     # Set axis labels and title
-    plt.xlabel('CRAN ' + metric_to_compare)
+    plt.xlabel('nparACT ' + metric_to_compare)
     plt.ylabel('GGIR ' + metric_to_compare)
-    plt.title('Comparison of GGIR vs CRAN for {}'.format(metric_to_compare))
+    plt.title('Comparison of GGIR vs nparACT for {}'.format(metric_to_compare))
 
     # Add a line of best fit (dotted) using filtered values
     line = slope * x_filtered + intercept
@@ -105,7 +105,7 @@ def GGIR_vs_CRAN_metric_bias(CRAN_df, GGIR_df, metric_to_compare, output_filepat
              transform=plt.gcf().transFigure)
 
     # Determine the minimum and maximum values with a margin
-    margin = 0.001  # Adjust the margin as needed
+    margin = 0.23  # Adjust the margin as needed
     min_value = min(min(x_values), min(y_values))
     max_value = max(max(x_values), max(y_values))
     xlim = (min_value * (1 - margin), max_value * (1 + margin))
@@ -141,5 +141,5 @@ CRAN_metrics_df = prepare_CRAN_data(filepath, CRAN_filename)
 output_filepath = '/Users/awashburn/Library/CloudStorage/OneDrive-BowdoinCollege/Documents/' \
                  'Mormino-Lab-Internship/Python-Projects/Actigraphy-Testing/timeSeries-actigraphy-csv-files/all-data-files/summary-metrics/bias-figs/'
 
-metric_to_compare = 'IV'
+metric_to_compare = 'IS'
 GGIR_vs_CRAN_metric_bias(CRAN_metrics_df, GGIR_metrics_df, metric_to_compare, output_filepath)
