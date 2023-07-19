@@ -138,8 +138,8 @@ def find_bouts(lids_obj, raw):
 
     sleep_bouts_filtered = lids_obj.filter(ts=sleep_bouts, duration_min='3H', duration_max='12H')
 
-    # resample/downscale the sleep bouts to have 10 minute bins  - COMMENT BACK IN
-    #sleep_bouts_filtered = resample_bouts(sleep_bouts_filtered)
+    # resample/downscale the sleep bouts to have 10 minute bins
+    sleep_bouts_filtered = resample_bouts(sleep_bouts_filtered)
 
     #plot_bouts(sleep_bouts_filtered)
     bouts_transformed = []
@@ -206,7 +206,7 @@ def per_file_no_mean(filename):
     """
 
     raw = read_input_data(filename)
-    bouts = find_bouts(lids_obj, raw)
+    bouts = (find_bouts(lids_obj, raw))
 
     return (bouts, len(bouts))
 
@@ -217,40 +217,43 @@ def set_up_plot(filenames):
     Takes the mean over several bouts for several files. Filters all files according to the shortest record. Plots.
     Note: all bouts are trimmed to be 6 hours. If there are shorter, they are padded with zeros.
     :param filenames: the filenames to include in the ultimate LIDS graph
-    :return:
+    :return: padded_bouts: the bouts trimmed or padded appropriately to be 6 hours.
     """
     all_bouts_all_files = []
     total_bouts = 0
     for i in range(len(filenames)):
         print('processing file: ', i)
         (all_bouts_from_file, n_bouts_in_file) = per_file_no_mean(filenames[i])
-        print('n_bouts_in_file: ', n_bouts_in_file)
 
-        for i in range(len(all_bouts_from_file)):
+        for j in range(len(all_bouts_from_file)):
             # append the bouts from each file to the total list of bouts
-            all_bouts_all_files.append(all_bouts_from_file[i])
+            bout_with_filename = (all_bouts_from_file[j], filenames[i])
+            all_bouts_all_files.append(bout_with_filename)
 
         total_bouts += n_bouts_in_file
 
     # pad arrays shorter than 6 hours with zeros
     padded_bouts = []
     for bout in all_bouts_all_files:
-        bout_length = len(bout)
-        target_length = 720 # COMMENT BACK IN - change back to 36
+        filename = bout[1]
+        bout_length = len(bout[0]) # bout[0] should represent the bout itself
+        target_length = 36
         if bout_length < target_length:
             # Calculate the amount of padding needed
             padding = target_length - bout_length
 
             # Pad the array with zeros on the right side only, a constant value
-            padded_array = np.pad(bout, (0, padding), 'constant')
-            padded_bouts.append(padded_array)
+            padded_array = np.pad(bout[0], (0, padding), 'constant')
+            bout_and_filename = (padded_array, filename)
+            padded_bouts.append(bout_and_filename)
         else:
-            padded_bouts.append(bout[0:720]) # COMMENT BACK IN - change to 0:36
+            bout_and_filename = (bout[0][0:36], filename)
+            padded_bouts.append(bout_and_filename)
 
     plt.figure()
 
     # Define the x-axis values in minutes, to show up as singular minutes instead of 10-minute increments
-    x_axis_minutes = np.arange(0, 360, 0.5)  # COMMENT BACK IN - change this to 0, 360, 10
+    x_axis_minutes = np.arange(0, 360, 10)
 
     # set label for x axis
     plt.xlabel('minutes since sleep onset')
@@ -258,12 +261,12 @@ def set_up_plot(filenames):
     plt.ylabel('inactivity')
 
     # calculate the mean of all the bouts, for the plot
-    total_mean = np.zeros(720) # COMMENT BACK IN - change this to 36
+    total_mean = np.zeros(36)
     for i in range(len(total_mean)):
         sum = 0
         count = 0
         for bout in padded_bouts:
-            val = bout[i]
+            val = bout[0][i]
             if val != 0:
                 sum += val
                 count += 1
@@ -283,16 +286,33 @@ def box_plot_outliers(padded_bouts):
     :return:
     """
     # Find the number of bouts and the length of each bout
-    bout_length = len(padded_bouts[0])  # Since all bouts have the same length
+    bout_length = len(padded_bouts[0][0])  # Since all bouts have the same length
+
+    # extract only the bouts, not the filenames for the following processes
+    extracted_bouts = []
+    for bout in padded_bouts:
+        extracted_bouts.append(bout[0]) # bout[0] is the bout, not the filename
+        print('filename: ', bout[1])
 
     # Convert padded_bouts to a 2D numpy array
-    padded_bouts_array = np.array(padded_bouts)
+    padded_bouts_array = np.array(extracted_bouts)
 
     # Extract the first five values from each bout
-    first_five_values = padded_bouts_array[:, :5]
+    first_five_values = padded_bouts_array[:, :5] # syntax: get the first 5 values for ALL rows in padded_bouts_array
 
-    # Get the indices of the 3 highest outliers for bout #1 (first column)
+    # Get the indices of the 3 highest outliers for epoch #1 (first column)
     outliers_indices = np.argsort(first_five_values[:, 0])[-3:]
+
+    # Get the filename values of the 3 highest outliers for epoch # 1
+    outlier_index_1 = outliers_indices[0]
+    outlier_index_2 = outliers_indices[1]
+    outlier_index_3 = outliers_indices[2]
+    filename_1 = padded_bouts[outlier_index_1][1]
+    filename_2 = padded_bouts[outlier_index_2][1]
+    filename_3 = padded_bouts[outlier_index_3][1]
+    outlier_filenames = [filename_1, filename_2, filename_3]
+    print('filenames of the outliers: ', outlier_filenames)
+    # filenames of the outliers:  ['68307_0003900477-timeSeries.csv.gz', '75189_0000001011-timeSeries.csv.gz', '67180_0003900497-timeSeries.csv.gz']
 
     # Create the box plot
     plt.boxplot(first_five_values)
@@ -302,10 +322,16 @@ def box_plot_outliers(padded_bouts):
     plt.ylabel('Inactivity')
     plt.title('Box Plot of First Five Values from Sleep Bouts')
 
+    # Scatter plot for ALL data points. Iterates over each bout in padded_bouts and plots first 5 epochs.
+    for bout_data in padded_bouts:
+        plt.scatter(range(1, 6), bout_data[0][:5], marker='o', alpha=0.3, color='blue')
+
     plt.show()
 
     print('outliers indices: ', outliers_indices)
     return outliers_indices
+
+
 
 
 def plot_outlier_bouts(outliers_indices, padded_bouts):
@@ -332,7 +358,7 @@ def plot_outlier_bouts(outliers_indices, padded_bouts):
     fig, axes = plt.subplots(n_bouts, 1, figsize=(8, 6))
 
     # define x axis minutes for even x axis
-    x_axis_minutes = np.arange(0, 360, 0.5)  # COMMENT BACK IN - change to (0, 360, 10)
+    x_axis_minutes = np.arange(0, 360, 10)
 
     # Loop over each subplot and plot the inactivity data for each bout
     for i, (ax, bout) in enumerate(zip(axes, bouts_data)):
@@ -348,7 +374,9 @@ def plot_outlier_bouts(outliers_indices, padded_bouts):
 
     plt.show()
 
-    plt.show()
+
+def plot_outlier_entire_record():
+    return 0 # temp
 
 
 
@@ -553,7 +581,7 @@ padded_bouts = set_up_plot(filenames)  # FUNCTION CALL FOR NON-NORMALIZED LIDS G
 
 outlier_indices = box_plot_outliers(padded_bouts)
 
-plot_outlier_bouts(outlier_indices, padded_bouts)
+#plot_outlier_bouts(outlier_indices, padded_bouts)
 
 
 

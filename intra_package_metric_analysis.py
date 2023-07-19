@@ -101,7 +101,7 @@ def IS_vs_IV(package_name, package_df):
              transform=plt.gcf().transFigure)
 
     # Determine the minimum and maximum values with a margin
-    margin = 0.5  # Adjust the margin as needed
+    margin = 0.4  # Adjust the margin as needed
     min_value = min(min(IV_values), min(IS_values))
     max_value = max(max(IV_values), max(IS_values))
     xlim = (min_value * (1 - margin), max_value * (1 + margin))
@@ -229,8 +229,8 @@ pyActigraphy_df = read_and_prepare_pyActigraphy_data(filepath, pyActigraphy_file
 GGIR_df = read_and_prepare_GGIR_data(filepath, GGIR_filename)
 CRAN_df = read_and_prepare_CRAN_data(filepath, CRAN_filename)
 
-package_name = 'GGIR'
-package_df = GGIR_df
+package_name = 'nparACT'
+package_df = CRAN_df
 
 IS_vs_IV(package_name, package_df)
 #kRA_vs_IV(package_name, package_df)
