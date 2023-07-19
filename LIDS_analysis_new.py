@@ -314,6 +314,14 @@ def box_plot_outliers(padded_bouts):
     print('filenames of the outliers: ', outlier_filenames)
     # filenames of the outliers:  ['68307_0003900477-timeSeries.csv.gz', '75189_0000001011-timeSeries.csv.gz', '67180_0003900497-timeSeries.csv.gz']
 
+    # print the bout timing so I can see which specific one it is in the filename
+    print('bout right before graph # 1 bout: ', padded_bouts[outlier_index_1 - 1][0])
+    print('bout from graph #1: ', padded_bouts[outlier_index_1][0])
+    print('bout right after graph # 1 bout: ', padded_bouts[outlier_index_1 + 1][0])
+    print('bout from graph #2: ', padded_bouts[outlier_index_2][0])
+    print('bout from graph #3: ', padded_bouts[outlier_index_3][0])
+
+
     # Create the box plot
     plt.boxplot(first_five_values)
 

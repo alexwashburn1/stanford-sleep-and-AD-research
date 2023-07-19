@@ -16,7 +16,7 @@ def read_input_data(filename):
 
     # Get the directory path of the current script or module
     fpath = '/Users/awashburn/Library/CloudStorage/OneDrive-BowdoinCollege/Documents/' \
-                 'Mormino-Lab-Internship/Python-Projects/Actigraphy-Testing/timeSeries-actigraphy-csv-files/stanford-modified-csv/'
+                 'Mormino-Lab-Internship/Python-Projects/Actigraphy-Testing/timeSeries-actigraphy-csv-files/all-data-files/'
 
     # actually read in the data
     raw = pyActigraphy.io.read_raw_bba(fpath+filename)
@@ -115,10 +115,10 @@ def crespo_sleep_wake(raw):
 
 
 '''FUNCTION CALLS'''
-raw = read_input_data('78203_0000000613-timeSeries.csv.gz')  # the file with disrupted sleep patterns potentially present
+raw = read_input_data('67180_0003900497-timeSeries.csv.gz')
 #Cole_Kripke_sleep_wake(raw)
-#roenneberg_sleep_wake(raw)
-crespo_sleep_wake(raw)
+roenneberg_sleep_wake(raw)
+#crespo_sleep_wake(raw)
 #sadeh_sleep_wake(raw)
 #scripps_sleep_wake(raw)
 
