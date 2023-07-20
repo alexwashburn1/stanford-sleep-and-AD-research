@@ -153,7 +153,16 @@ def find_bouts(lids_obj, raw):
             bouts_transformed.append(sleep_bouts_filtered[i])
 
         #plot_bouts(bouts_transformed)
-    return bouts_transformed
+
+    #TODO - COMMENT OUT the code below if you don't want to delete the first 4 epochs
+    all_bouts_first_4_epochs_removed = []
+    for bout in bouts_transformed:
+        new_bout = bout[4:]
+        bout_tuple = (new_bout, filename)
+        all_bouts_first_4_epochs_removed.append(bout_tuple)
+
+    return all_bouts_first_4_epochs_removed
+
 
 def find_shortest_series(series):
     """
@@ -232,9 +241,19 @@ def set_up_plot(filenames):
 
         total_bouts += n_bouts_in_file
 
+    # Iterate over all bouts, removing the first 5 epochs. TODO - DELETE IF NOT WANTED
+    temp_all_bouts = []
+    for bout in all_bouts_all_files:
+        filename = bout[1]
+        print('bout 0: ', bout[0])
+        new_bout = bout[0].iloc[4:]
+        bout_tuple = (new_bout, filename)
+
+        temp_all_bouts.append(bout_tuple)
+
     # pad arrays shorter than 6 hours with zeros
     padded_bouts = []
-    for bout in all_bouts_all_files:
+    for bout in temp_all_bouts:
         filename = bout[1]
         bout_length = len(bout[0]) # bout[0] should represent the bout itself
         target_length = 36
@@ -323,16 +342,27 @@ def box_plot_outliers(padded_bouts):
 
 
     # Create the box plot
-    plt.boxplot(first_five_values)
+    plt.violinplot(first_five_values)
 
     # Set labels and title
     plt.xlabel('10 minute interval')
     plt.ylabel('Inactivity')
-    plt.title('Box Plot of First Five Values from Sleep Bouts')
+    plt.title('Violin Plot of First Five Values from Sleep Bouts')
 
     # Scatter plot for ALL data points. Iterates over each bout in padded_bouts and plots first 5 epochs.
+    # Jitter magnitude (you can adjust this value to control the amount of jitter)
+    x_jitter_magnitude = 0.1
+    y_jitter_magnitude = 0.1
+
     for bout_data in padded_bouts:
-        plt.scatter(range(1, 6), bout_data[0][:5], marker='o', alpha=0.3, color='blue')
+        # generate jittered x-axis values
+        x_jittered = [x_val + np.random.uniform(-x_jitter_magnitude, x_jitter_magnitude) for x_val in range(1, 6)]
+
+        # Generate jittered y-axis values
+        y_jittered = [y_val + np.random.uniform(-y_jitter_magnitude, y_jitter_magnitude) for y_val in bout_data[0][:5]]
+
+        # Plot the original x-axis values with jittered y-axis values
+        plt.scatter(x_jittered, y_jittered, marker='o', alpha=0.3, color='blue', s=6)
 
     plt.show()
 
@@ -585,13 +615,14 @@ directory = '/Users/awashburn/Library/CloudStorage/OneDrive-BowdoinCollege/Docum
 
 filenames = [filename for filename in os.listdir(directory) if filename.endswith('timeSeries.csv.gz')]      # CHANGE THIS BACK - to 'timeSeries.csv.gz'
 
-padded_bouts = set_up_plot(filenames)  # FUNCTION CALL FOR NON-NORMALIZED LIDS GRAPH
+#padded_bouts = set_up_plot(filenames[1:2])  # FUNCTION CALL FOR NON-NORMALIZED LIDS GRAPH
 
-outlier_indices = box_plot_outliers(padded_bouts)
+#outlier_indices = box_plot_outliers(padded_bouts)
 
 #plot_outlier_bouts(outlier_indices, padded_bouts)
 
 
 
-#process_normalized(filenames)  # FUNCTION CALL FOR NORMALIZED LIDS GRAPH
+process_normalized(filenames[1:4])  # FUNCTION CALL FOR NORMALIZED LIDS GRAPH
 plt.show()
+
