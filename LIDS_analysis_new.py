@@ -10,12 +10,13 @@ import matplotlib.pyplot as plt
 from scipy.stats import linregress
 from pyActigraphy.analysis import LIDS   #LIDS tools import
 import plotly.graph_objects as go
+from scipy.interpolate import make_interp_spline
 
 # Create a LIDS object
 lids_obj = LIDS()
 
 # set max LIDS periods value
-MAX_PERIODS = 5
+MAX_PERIODS = 4
 max_x_value = MAX_PERIODS
 
 def read_input_data(filename):
@@ -131,10 +132,10 @@ def find_bouts(lids_obj, raw):
     print('length of the wakes: ', len(wakes))
     for i in range(len(wakes)):
         sleep_wakes.append((sleeps[i], wakes[i]))  # append the tuple of the on and off times
-    # iterate through the sleep_wakes and find the duration of each sleep. Append to sleep_bouts.
+    # iterate through the sleep_wakes and find the duration/timeseries of each sleep. Append to sleep_bouts.
     sleep_bouts = []
     for i in range(len(sleep_wakes)):
-        sleep_bouts.append(extract_bout(raw.data, sleep_wakes[i][0], sleep_wakes[i][1]))
+        sleep_bouts.append(extract_bout(raw.data, sleep_wakes[i][0], sleep_wakes[i][1])) # sleep_wakes[i]
 
     sleep_bouts_filtered = lids_obj.filter(ts=sleep_bouts, duration_min='3H', duration_max='12H')
 
@@ -158,8 +159,7 @@ def find_bouts(lids_obj, raw):
     all_bouts_first_4_epochs_removed = []
     for bout in bouts_transformed:
         new_bout = bout[4:]
-        bout_tuple = (new_bout, filename)
-        all_bouts_first_4_epochs_removed.append(bout_tuple)
+        all_bouts_first_4_epochs_removed.append(new_bout)
 
     return all_bouts_first_4_epochs_removed
 
@@ -197,6 +197,7 @@ def mean_of_bouts(bouts):
     # take the mean of the activity data
     activity_data_mean = np.mean(activity_data, axis=0)
     return activity_data_mean
+
 
 def per_file(filename):
     raw = read_input_data(filename)
@@ -589,7 +590,12 @@ def process_normalized(filenames):
     # set x axis to show LIDS periods
     xs = np.linspace(0, MAX_PERIODS, len(file_mean))
 
-    plt.plot(xs, file_mean)
+    # Smooth the line a little bit
+    x_smooth = np.linspace(min(xs), max(xs), 300)  # Increase 300 to get a smoother line
+    spl = make_interp_spline(xs, file_mean)
+    file_mean_smooth = spl(x_smooth)
+
+    plt.plot(x_smooth, file_mean_smooth) # CAN COMMENT OUT SMOOTH = 0.5
 
 
 
@@ -615,7 +621,7 @@ directory = '/Users/awashburn/Library/CloudStorage/OneDrive-BowdoinCollege/Docum
 
 filenames = [filename for filename in os.listdir(directory) if filename.endswith('timeSeries.csv.gz')]      # CHANGE THIS BACK - to 'timeSeries.csv.gz'
 
-#padded_bouts = set_up_plot(filenames[1:2])  # FUNCTION CALL FOR NON-NORMALIZED LIDS GRAPH
+#padded_bouts = set_up_plot(filenames)  # FUNCTION CALL FOR NON-NORMALIZED LIDS GRAPH
 
 #outlier_indices = box_plot_outliers(padded_bouts)
 
@@ -623,6 +629,6 @@ filenames = [filename for filename in os.listdir(directory) if filename.endswith
 
 
 
-process_normalized(filenames[1:4])  # FUNCTION CALL FOR NORMALIZED LIDS GRAPH
+process_normalized(filenames)  # FUNCTION CALL FOR NORMALIZED LIDS GRAPH
 plt.show()
 
