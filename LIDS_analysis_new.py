@@ -462,7 +462,7 @@ def mean_of_bouts_normalized(lids_obj, bouts):
     activity_data = []
     periods = []
     for i in range(len(bouts)):  # iterate through the bouts
-        
+
         activity_data.append(extract_activity_data(bouts[i]))  # append the activity data from each bout
         periods.append(cosine_fit(lids_obj, bouts[i]))
 
@@ -552,7 +552,6 @@ def process_normalized(filenames):
 
 
 
-
 ''' FUNCTION CALLS '''
 
 filename = '67067_0000000131-timeSeries.csv.gz'
@@ -565,21 +564,20 @@ print('raw type data: ', type(raw.data))
 # test lids functionality
 #LIDS_functionality_test(lids_obj, raw)
 
-
 #### LIDS GRAPHICAL ANALYSIS ####
 directory = '/Users/awashburn/Library/CloudStorage/OneDrive-BowdoinCollege/Documents/' \
                  'Mormino-Lab-Internship/Python-Projects/Actigraphy-Testing/timeSeries-actigraphy-csv-files/all-data-files/'
 
 filenames = [filename for filename in os.listdir(directory) if filename.endswith('timeSeries.csv.gz')]      # CHANGE THIS BACK - to 'timeSeries.csv.gz'
 
+# for mean, non-normalized plot
 #padded_bouts = set_up_plot(filenames[1:2])  # FUNCTION CALL FOR NON-NORMALIZED LIDS GRAPH
 
+# outlier analysis
 #outlier_indices = box_plot_outliers(padded_bouts)
-
 #plot_outlier_bouts(outlier_indices, padded_bouts)
 
-
-
+# for the normalized plot
 process_normalized(filenames[1:2])  # FUNCTION CALL FOR NORMALIZED LIDS GRAPH
 plt.show()
 
