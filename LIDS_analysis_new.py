@@ -90,6 +90,8 @@ def extract_activity_data(bout):
     :return: Pandas Series of  activity values
     """
     # given Panda series of (timestamp, activity value) tuples, extract the activity values
+
+
     df = pd.DataFrame(bout.tolist())
     return df[0]   # return the activity values
 
@@ -176,37 +178,6 @@ def find_shortest_series(series):
             min_length = len(series[i])  # update the min length
     return min_length
 
-def mean_of_bouts(bouts):
-    """
-    Identifies the mean of the bouts for a single file.
-    :param bouts:
-    :return:
-    """
-    # extract the activity data from the bouts
-    activity_data = []
-    for i in range(len(bouts)):  # iterate through the bouts
-        activity_data.append(extract_activity_data(bouts[i]))  # append the activity data from each bout
-    # find the shortest series
-    length_of_shortest_series = find_shortest_series(activity_data)
-    print("length of shortest series: ", length_of_shortest_series)
-    # trim the series to the shortest series
-    for i in range(len(activity_data)):     # WHAT DOES THIS DO?
-        activity_data[i] = activity_data[i][:length_of_shortest_series]
-    # convert the activity data to a numpy array
-    activity_data = np.array(activity_data)
-    # take the mean of the activity data
-    activity_data_mean = np.mean(activity_data, axis=0)
-    return activity_data_mean
-
-
-def per_file(filename):
-    raw = read_input_data(filename)
-    bouts = find_bouts(lids_obj, raw)
-
-    # find the mean bout
-    activity_data_mean = mean_of_bouts(bouts)    # COMMENT OUT THE INDEX
-    return (activity_data_mean, len(bouts))
-
 
 def per_file_no_mean(filename):
     """
@@ -216,7 +187,7 @@ def per_file_no_mean(filename):
     """
 
     raw = read_input_data(filename)
-    bouts = (find_bouts(lids_obj, raw))
+    bouts = find_bouts(lids_obj, raw)
 
     return (bouts, len(bouts))
 
@@ -418,17 +389,6 @@ def plot_outlier_entire_record():
     return 0 # temp
 
 
-
-def plot_bouts(bouts):
-    n_bouts = len(bouts)
-    for i in range(n_bouts):
-        fig = plt.figure()
-        fig.suptitle('bout ' + str(i+1))
-        to_plot = np.array(extract_activity_data(bouts[i]).tolist())
-        plt.plot(to_plot)
-    #plt.show()
-
-
 def cosine_fit(lids_obj, bout):
     """
     Fit a cosine to the bout data
@@ -502,6 +462,7 @@ def mean_of_bouts_normalized(lids_obj, bouts):
     activity_data = []
     periods = []
     for i in range(len(bouts)):  # iterate through the bouts
+        
         activity_data.append(extract_activity_data(bouts[i]))  # append the activity data from each bout
         periods.append(cosine_fit(lids_obj, bouts[i]))
 
@@ -527,14 +488,6 @@ def mean_of_bouts_normalized(lids_obj, bouts):
         x += x_increment
     return y_averages
 
-def per_file_normalized(lids_obj, filename):
-    # issue where the length of wakes and sleeps is unequal:
-    raw = read_input_data(filename)
-    bouts = find_bouts(lids_obj, raw)
-
-    activity_data_mean = mean_of_bouts_normalized(lids_obj, bouts)
-    return (activity_data_mean, len(bouts))
-
 def file_data_plot(file_mean, filename):
     plt.figure()
     # set label for x axis
@@ -558,41 +511,39 @@ def resample_bouts(sleep_bouts):
     return bouts_resampled
 
 def process_normalized(filenames):
-    file_means = []
+    all_bouts = []
     total_bouts = 0
+    n_files = 0
     for i in range(len(filenames)):
 
         print('file being processed: ', i)
         print('associated filename: ', filenames[i])
 
 
-        (file_mean, n_bouts_in_file) = per_file_normalized(lids_obj, filenames[i])
-        if file_mean == 0 and n_bouts_in_file == 0:
-            total_bouts += n_bouts_in_file
-        else:
-            file_means.append(file_mean)  # append the mean of the activity data for each file
-            total_bouts += n_bouts_in_file
-            file_data_plot(file_mean, filenames[i])
-    length_of_shortest_array = find_shortest_series(file_means)
-    print("length of shortest array: ", length_of_shortest_array)
-    for i in range(len(file_means)):
-        file_means[i] = file_means[i][:length_of_shortest_array]
+        (all_bouts_from_file, n_bouts_in_file) = per_file_no_mean(filenames[i])
+
+        # append each bout from the file seperately to the list of ALL bouts
+        for bout in all_bouts_from_file:
+            all_bouts.append(bout)
+
+        total_bouts += n_bouts_in_file
+        n_files += 1
+
+    activity_mean = mean_of_bouts_normalized(lids_obj, all_bouts)
     plt.figure()
     # set label for x axis
     plt.xlabel('period (TBD)')
     # set label for y axis
     plt.ylabel('inactivity')
     # set title
-    n_files = len(file_means)
-    file_mean = np.mean(file_means, axis=0)
     plt.title(f'mean of {total_bouts} bouts from {n_files} files')
 
     # set x axis to show LIDS periods
-    xs = np.linspace(0, MAX_PERIODS, len(file_mean))
+    xs = np.linspace(0, MAX_PERIODS, len(activity_mean))
 
     # Smooth the line a little bit
     x_smooth = np.linspace(min(xs), max(xs), 300)  # Increase 300 to get a smoother line
-    spl = make_interp_spline(xs, file_mean)
+    spl = make_interp_spline(xs, activity_mean)
     file_mean_smooth = spl(x_smooth)
 
     plt.plot(x_smooth, file_mean_smooth) # CAN COMMENT OUT SMOOTH = 0.5
@@ -621,7 +572,7 @@ directory = '/Users/awashburn/Library/CloudStorage/OneDrive-BowdoinCollege/Docum
 
 filenames = [filename for filename in os.listdir(directory) if filename.endswith('timeSeries.csv.gz')]      # CHANGE THIS BACK - to 'timeSeries.csv.gz'
 
-#padded_bouts = set_up_plot(filenames)  # FUNCTION CALL FOR NON-NORMALIZED LIDS GRAPH
+#padded_bouts = set_up_plot(filenames[1:2])  # FUNCTION CALL FOR NON-NORMALIZED LIDS GRAPH
 
 #outlier_indices = box_plot_outliers(padded_bouts)
 
@@ -629,6 +580,6 @@ filenames = [filename for filename in os.listdir(directory) if filename.endswith
 
 
 
-process_normalized(filenames)  # FUNCTION CALL FOR NORMALIZED LIDS GRAPH
+process_normalized(filenames[1:2])  # FUNCTION CALL FOR NORMALIZED LIDS GRAPH
 plt.show()
 
