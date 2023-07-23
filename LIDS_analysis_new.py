@@ -11,6 +11,7 @@ from scipy.stats import linregress
 from pyActigraphy.analysis import LIDS   #LIDS tools import
 import plotly.graph_objects as go
 from scipy.interpolate import make_interp_spline
+import sex_age_bins_LIDS
 
 # Create a LIDS object
 lids_obj = LIDS()
@@ -549,6 +550,28 @@ def process_normalized(filenames):
     plt.plot(x_smooth, file_mean_smooth) # CAN COMMENT OUT SMOOTH = 0.5
 
 
+def normalized_binned_by_sex(filenames, age_sex_etiology_dict):
+    """
+    Generates a list of filenames for subjects of sex Male and Female, by looking them up in the demographics
+    dictionary.
+    :param filenames: the list of all 166 filenames
+    :param age_sex_etiology_dict: the dictionary containing sex information about all n=166 filenames
+    :return: male_female_file_list_tuple - a tuple, containing the male and female filename lists, respectively.
+    """
+    male_filenames_list = []
+    female_filenames_list = []
+
+    for filename in filenames:
+        filename = filename.replace("-timeSeries.csv.gz", "")
+        sex = age_sex_etiology_dict[filename][1]
+        if sex == 'Male':
+            male_filenames_list.append(filename + "-timeSeries.csv.gz")
+        else:
+            # sex must be Female
+            female_filenames_list.append(filename + "-timeSeries.csv.gz")
+
+    male_female_file_list_tuple = (male_filenames_list, female_filenames_list)
+    return male_female_file_list_tuple
 
 
 
@@ -578,6 +601,10 @@ filenames = [filename for filename in os.listdir(directory) if filename.endswith
 #plot_outlier_bouts(outlier_indices, padded_bouts)
 
 # for the normalized plot
-process_normalized(filenames[1:2])  # FUNCTION CALL FOR NORMALIZED LIDS GRAPH
-plt.show()
+#process_normalized(filenames[1:2])  # FUNCTION CALL FOR NORMALIZED LIDS GRAPH
+#plt.show()
+
+# create the normalized plot, but binned by age
+age_sex_etiology_dict = sex_age_bins_LIDS.initialize_user_dictionary('AgeSexDx_n166_2023-07-13.csv')
+normalized_binned_by_sex(filenames, age_sex_etiology_dict)
 
