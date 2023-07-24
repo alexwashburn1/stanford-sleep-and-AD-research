@@ -13,6 +13,7 @@ import plotly.graph_objects as go
 from scipy.interpolate import make_interp_spline
 import sex_age_bins_LIDS
 from matplotlib.colors import LinearSegmentedColormap
+from matplotlib.colors import ListedColormap
 
 # Create a LIDS object
 lids_obj = LIDS()
@@ -512,7 +513,14 @@ def resample_bouts(sleep_bouts):
         bouts_resampled.append(resampled)
     return bouts_resampled
 
-def process_normalized(filenames, label, colormap):
+def process_normalized(filenames, label, colors):
+    """
+
+    :param filenames:
+    :param label: label, for legend if applicable.
+    :param colors: a list of colors, if using bins will have multiple colors.
+    :return:
+    """
     all_bouts = []
     total_bouts = 0
     n_files = 0
@@ -541,9 +549,8 @@ def process_normalized(filenames, label, colormap):
     spl = make_interp_spline(xs, activity_mean)
     file_mean_smooth = spl(x_smooth)
 
-    # Assign a color to the age interval based on the colormap
-    age_interval_index = int(label.split('-')[0].split()[-1])  # Extract age interval from label
-    color = colormap(age_interval_index / 80)  # Normalize age_interval_index to [0, 1]
+    #age_interval_index = int(label.split('-')[0].split()[-1])  # Extract age interval from label
+    color = colors[label]  # Normalize age_interval_index to [0, 1]
 
     # Ensure that the x-axis ticks show integers (0, 1, 2, 3, 4, ...)
     num_ticks = 5  # You can adjust the number of ticks as needed
@@ -595,49 +602,34 @@ def normalized_binned_by_sex(filenames, age_sex_etiology_dict):
     return male_female_file_list_tuple
 
 def normalized_binned_by_age(filenames, age_sex_etiology_dict):
-    age_40to50_list = []
-    age_50to60_list = []
-    age_60to70_list = []
+    age_40to70_list = []
     age_70to80_list = []
-    age_80to90_list = []
-    age_90to100_list = []
+    age_80to100_list = []
 
     for filename in filenames:
         filename = filename.replace("-timeSeries.csv.gz", "")
         age = age_sex_etiology_dict[filename][0]
-        if age >= 40 and age < 50:
-            age_40to50_list.append(filename + "-timeSeries.csv.gz")
-        elif age >= 50 and age < 60:
-            age_50to60_list.append(filename + "-timeSeries.csv.gz")
-        elif age >= 60 and age < 70:
-            age_60to70_list.append(filename + "-timeSeries.csv.gz")
+        if age >= 40 and age < 70:
+            age_40to70_list.append(filename + "-timeSeries.csv.gz")
         elif age >= 70 and age < 80:
             age_70to80_list.append(filename + "-timeSeries.csv.gz")
-        elif age >= 80 and age < 90:
-            age_80to90_list.append(filename + "-timeSeries.csv.gz")
-        elif age >= 90 and age <= 100:
-            age_90to100_list.append(filename + "-timeSeries.csv.gz")
+        elif age >= 80 and age <= 100:
+            age_80to100_list.append(filename + "-timeSeries.csv.gz")
 
-    print('len filename 40-50: ', len(age_40to50_list))
-    print('len filename 50-60: ', len(age_50to60_list))
-    print('len filename 60-70: ', len(age_60to70_list))
+    print('len filename 40-70: ', len(age_40to70_list))
     print('len filename 70-80: ', len(age_70to80_list))
-    print('len filename 80-90: ', len(age_80to90_list))
-    print('len filename 90-100: ', len(age_90to100_list))
+    print('len filename 80-100: ', len(age_80to100_list))
 
-    return (age_40to50_list, age_50to60_list, age_60to70_list, age_70to80_list, age_80to90_list, age_90to100_list)
-
-
-
+    return (age_40to70_list, age_70to80_list, age_80to100_list)
 
 
 ''' FUNCTION CALLS '''
 
-filename = '67067_0000000131-timeSeries.csv.gz'
-raw = read_input_data(filename)
+#filename = '67067_0000000131-timeSeries.csv.gz'
+#raw = read_input_data(filename)
 
-print('raw type: ', type(raw))
-print('raw type data: ', type(raw.data))
+#print('raw type: ', type(raw))
+#print('raw type data: ', type(raw.data))
 
 
 # test lids functionality
@@ -661,7 +653,7 @@ filenames = [filename for filename in os.listdir(directory) if filename.endswith
 #process_normalized(filenames[1:2])  # FUNCTION CALL FOR NORMALIZED LIDS GRAPH
 #plt.show()
 
-# create the normalized plot, BINNED BY SEX
+### 1) create the normalized plot, BINNED BY SEX ###
 age_sex_etiology_dict = sex_age_bins_LIDS.initialize_user_dictionary('AgeSexDx_n166_2023-07-13.csv')
 #(male_filenames, female_filenames) = normalized_binned_by_sex(filenames, age_sex_etiology_dict)
 #print('length male: ', len(male_filenames))
@@ -674,23 +666,21 @@ age_sex_etiology_dict = sex_age_bins_LIDS.initialize_user_dictionary('AgeSexDx_n
 
 #plt.show()
 
-# create the normalized plot, BINNED BY AGE
-(age_40to50_list, age_50to60_list, age_60to70_list, age_70to80_list, age_80to90_list, age_90to100_list) = normalized_binned_by_age(filenames, age_sex_etiology_dict)
+### 2) create the normalized plot, BINNED BY AGE ###
+(age_40to70_list, age_70to80_list, age_80to100_list) = normalized_binned_by_age(filenames, age_sex_etiology_dict)
 # Define the age intervals and lists
-age_intervals = ['age 40-50', 'age 50-60', 'age 60-70', 'age 70-80', 'age 80-90', 'age 90-100']
+age_intervals = ['age 40-70', 'age 70-80', 'age 80-100']
 
-age_lists = [age_40to50_list, age_50to60_list, age_60to70_list, age_70to80_list, age_80to90_list, age_90to100_list]
+age_lists = [age_40to70_list[0:5], age_70to80_list[0:5], age_80to100_list[0:5]]
 
 # create a color map
 # Define custom colors for the colormap
-colors = [
-    (0.7, 0.9, 0.7),  # Light Green (RGB values from 0 to 1)
-    (0.4, 0.7, 0.9),  # Blue
-    (0.6, 0.4, 0.9),  # Purple
-]
 
-# Create a LinearSegmentedColormap
-age_colormap = LinearSegmentedColormap.from_list('age_colormap', colors, N=256)
+colors_age = {
+        'age 40-70': (0.7, 0.9, 0.7),  # Light Green (RGB values from 0 to 1)
+        'age 70-80': (0.4, 0.7, 0.9),  # Blue
+        'age 80-100': (0.6, 0.4, 0.9),  # Purple
+    }
 
 # Create the figure
 plt.figure()
@@ -700,7 +690,7 @@ plt.title('Normalized Activity')
 
 # Call process_normalized for each age interval and plot with appropriate color
 for i, age_interval in enumerate(age_intervals):
-    process_normalized(age_lists[i], age_interval, age_colormap)
+    process_normalized(age_lists[i], age_interval, colors_age)
 
 # Add the legend with custom title and location
 plt.legend(title='Age Interval', loc='upper right')
