@@ -2,7 +2,13 @@
 import pandas as pd
 import numpy as np
 import csv
+import matplotlib.pyplot as plt
+from scipy.interpolate import make_interp_spline
+from pyActigraphy.analysis import LIDS
 
+
+# define a LIDS object
+lids_obj = LIDS()
 
 def initialize_user_dictionary(demographics_filename):
     """
@@ -31,6 +37,11 @@ def initialize_user_dictionary(demographics_filename):
         age_sex_etiology_dict[ID] = dict_values
 
     return age_sex_etiology_dict
+
+
+
+
+
 
 '''FUNCTION CALLS'''
 filename = 'AgeSexDx_n166_2023-07-13.csv'

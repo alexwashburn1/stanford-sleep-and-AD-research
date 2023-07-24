@@ -12,6 +12,7 @@ from pyActigraphy.analysis import LIDS   #LIDS tools import
 import plotly.graph_objects as go
 from scipy.interpolate import make_interp_spline
 import sex_age_bins_LIDS
+from matplotlib.colors import LinearSegmentedColormap
 
 # Create a LIDS object
 lids_obj = LIDS()
@@ -511,7 +512,7 @@ def resample_bouts(sleep_bouts):
         bouts_resampled.append(resampled)
     return bouts_resampled
 
-def process_normalized(filenames):
+def process_normalized(filenames, label, colormap):
     all_bouts = []
     total_bouts = 0
     n_files = 0
@@ -531,13 +532,6 @@ def process_normalized(filenames):
         n_files += 1
 
     activity_mean = mean_of_bouts_normalized(lids_obj, all_bouts)
-    plt.figure()
-    # set label for x axis
-    plt.xlabel('period (TBD)')
-    # set label for y axis
-    plt.ylabel('inactivity')
-    # set title
-    plt.title(f'mean of {total_bouts} bouts from {n_files} files')
 
     # set x axis to show LIDS periods
     xs = np.linspace(0, MAX_PERIODS, len(activity_mean))
@@ -547,7 +541,34 @@ def process_normalized(filenames):
     spl = make_interp_spline(xs, activity_mean)
     file_mean_smooth = spl(x_smooth)
 
-    plt.plot(x_smooth, file_mean_smooth) # CAN COMMENT OUT SMOOTH = 0.5
+    # Assign a color to the age interval based on the colormap
+    age_interval_index = int(label.split('-')[0].split()[-1])  # Extract age interval from label
+    color = colormap(age_interval_index / 80)  # Normalize age_interval_index to [0, 1]
+
+    # Ensure that the x-axis ticks show integers (0, 1, 2, 3, 4, ...)
+    num_ticks = 5  # You can adjust the number of ticks as needed
+    plt.xticks(np.linspace(0, MAX_PERIODS, num_ticks), np.arange(num_ticks))
+
+    plt.plot(x_smooth, file_mean_smooth, label=label, color = color)
+
+
+
+def create_figure():
+    plt.figure()
+    # set label for x axis
+    plt.xlabel('period')
+    # set label for y axis
+    plt.ylabel('inactivity')
+    # set title
+    plt.title('LIDS normalized mean for Male = 84, Female = 82')
+
+    # If you want to add a legend title, you can use:
+    #plt.legend(title='Legend')
+
+    # The plt.legend() function will use the labels specified in the process_normalized function.
+
+    # If you want to change the legend's location, you can use:
+    #plt.legend(loc='lower right')  # Or 'upper right', 'lower left', 'lower right', etc.
 
 
 def normalized_binned_by_sex(filenames, age_sex_etiology_dict):
@@ -572,6 +593,41 @@ def normalized_binned_by_sex(filenames, age_sex_etiology_dict):
 
     male_female_file_list_tuple = (male_filenames_list, female_filenames_list)
     return male_female_file_list_tuple
+
+def normalized_binned_by_age(filenames, age_sex_etiology_dict):
+    age_40to50_list = []
+    age_50to60_list = []
+    age_60to70_list = []
+    age_70to80_list = []
+    age_80to90_list = []
+    age_90to100_list = []
+
+    for filename in filenames:
+        filename = filename.replace("-timeSeries.csv.gz", "")
+        age = age_sex_etiology_dict[filename][0]
+        if age >= 40 and age < 50:
+            age_40to50_list.append(filename + "-timeSeries.csv.gz")
+        elif age >= 50 and age < 60:
+            age_50to60_list.append(filename + "-timeSeries.csv.gz")
+        elif age >= 60 and age < 70:
+            age_60to70_list.append(filename + "-timeSeries.csv.gz")
+        elif age >= 70 and age < 80:
+            age_70to80_list.append(filename + "-timeSeries.csv.gz")
+        elif age >= 80 and age < 90:
+            age_80to90_list.append(filename + "-timeSeries.csv.gz")
+        elif age >= 90 and age <= 100:
+            age_90to100_list.append(filename + "-timeSeries.csv.gz")
+
+    print('len filename 40-50: ', len(age_40to50_list))
+    print('len filename 50-60: ', len(age_50to60_list))
+    print('len filename 60-70: ', len(age_60to70_list))
+    print('len filename 70-80: ', len(age_70to80_list))
+    print('len filename 80-90: ', len(age_80to90_list))
+    print('len filename 90-100: ', len(age_90to100_list))
+
+    return (age_40to50_list, age_50to60_list, age_60to70_list, age_70to80_list, age_80to90_list, age_90to100_list)
+
+
 
 
 
@@ -600,11 +656,68 @@ filenames = [filename for filename in os.listdir(directory) if filename.endswith
 #outlier_indices = box_plot_outliers(padded_bouts)
 #plot_outlier_bouts(outlier_indices, padded_bouts)
 
-# for the normalized plot
+# for the normalized plot, all filenames
+#create_figure()
 #process_normalized(filenames[1:2])  # FUNCTION CALL FOR NORMALIZED LIDS GRAPH
 #plt.show()
 
-# create the normalized plot, but binned by age
+# create the normalized plot, BINNED BY SEX
 age_sex_etiology_dict = sex_age_bins_LIDS.initialize_user_dictionary('AgeSexDx_n166_2023-07-13.csv')
-normalized_binned_by_sex(filenames, age_sex_etiology_dict)
+#(male_filenames, female_filenames) = normalized_binned_by_sex(filenames, age_sex_etiology_dict)
+#print('length male: ', len(male_filenames))
+#print('length female: ', len(female_filenames))
+
+#create_figure()
+
+#process_normalized(male_filenames, 'Male (n = 84)', color = '#00BFFF') # blue
+#process_normalized(female_filenames, 'Female (n = 82)', color = '#FF69B4') #pink
+
+#plt.show()
+
+# create the normalized plot, BINNED BY AGE
+(age_40to50_list, age_50to60_list, age_60to70_list, age_70to80_list, age_80to90_list, age_90to100_list) = normalized_binned_by_age(filenames, age_sex_etiology_dict)
+# Define the age intervals and lists
+age_intervals = ['age 40-50', 'age 50-60', 'age 60-70', 'age 70-80', 'age 80-90', 'age 90-100']
+
+age_lists = [age_40to50_list, age_50to60_list, age_60to70_list, age_70to80_list, age_80to90_list, age_90to100_list]
+
+# create a color map
+# Define custom colors for the colormap
+colors = [
+    (0.7, 0.9, 0.7),  # Light Green (RGB values from 0 to 1)
+    (0.4, 0.7, 0.9),  # Blue
+    (0.6, 0.4, 0.9),  # Purple
+]
+
+# Create a LinearSegmentedColormap
+age_colormap = LinearSegmentedColormap.from_list('age_colormap', colors, N=256)
+
+# Create the figure
+plt.figure()
+plt.xlabel('period')
+plt.ylabel('inactivity')
+plt.title('Normalized Activity')
+
+# Call process_normalized for each age interval and plot with appropriate color
+for i, age_interval in enumerate(age_intervals):
+    process_normalized(age_lists[i], age_interval, age_colormap)
+
+# Add the legend with custom title and location
+plt.legend(title='Age Interval', loc='upper right')
+
+plt.show()
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
