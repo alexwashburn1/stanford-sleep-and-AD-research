@@ -20,7 +20,7 @@ from scipy.stats import sem
 lids_obj = LIDS()
 
 # set max LIDS periods value
-MAX_PERIODS = 5
+MAX_PERIODS = 4
 max_x_value = MAX_PERIODS
 
 def read_input_data(filename):
@@ -269,8 +269,21 @@ def set_up_plot(filenames):
         if count != 0:
             total_mean[i] = sum / count
 
+
+    # confidence interval attempt:
+
+    confidence_intervals = []
+    for i in range(len(total_mean)):
+       print('i: ', i)
+       bout_values = [bout[0][i] for bout in padded_bouts if bout[0][i] != 0]
+       confidence_intervals.append(1.96 * sem(bout_values))  # 95% confidence interval, assuming a normal distribution
+
     plt.title(f'mean of {total_bouts} bouts')
+
     plt.plot(x_axis_minutes, total_mean)
+    plt.fill_between(x_axis_minutes, total_mean - confidence_intervals, total_mean + confidence_intervals,
+                     alpha=0.2)
+
     plt.show()
 
     return padded_bouts
@@ -445,16 +458,21 @@ def find_y_average_in_bin(normalized_bouts_array, bin_x_start, bin_x_end):
     :return: average y value in the bin
     """
     sum_y_values = 0
+    bout_values = []
     count = 0
     for bout in normalized_bouts_array:
         for x_y in bout:
             if x_y[0] >= bin_x_start and x_y[0] < bin_x_end:
                 sum_y_values += x_y[1]
                 count += 1
+                bout_values.append(x_y[1])
     if count == 0:
-        return 0
+        average = 0
     else:
-        return sum_y_values / count
+        average = sum_y_values / count
+
+    confidence_interval = 1.96 * sem(bout_values)  # 95% confidence interval, assuming a normal distribution
+    return (average, confidence_interval)
 
 def mean_of_bouts_normalized(lids_obj, bouts):
     """
@@ -478,20 +496,22 @@ def mean_of_bouts_normalized(lids_obj, bouts):
     normalized_bouts_array = np.array(normalized_bouts_list)
 
     # define a number of bins
-    N_BINS = 50 # CHANGE THIS BACK - to 1000 for bins = 30 sec if applicable
+    N_BINS = 50 # CHANGE THIS BACK to 50 - to 1000 for bins = 30 sec if applicable
     # divide the max X value by the number of bins
     x_increment = max_x_value / N_BINS
     # iterate through the bins and find the average of the Y values in each bin
     x = 0
     y_averages = []
+    confidence_intervals = []
     while x < max_x_value:
         # find the average of the Y values
         bin_x_start = x
         bin_x_end = x + x_increment
-        y_average_in_bin = find_y_average_in_bin(normalized_bouts_array,bin_x_start, bin_x_end )
+        (y_average_in_bin, confidence_interval) = find_y_average_in_bin(normalized_bouts_array,bin_x_start, bin_x_end )
         y_averages.append(y_average_in_bin)
+        confidence_intervals.append(confidence_interval)
         x += x_increment
-    return y_averages
+    return (y_averages, confidence_intervals)
 
 def file_data_plot(file_mean, filename):
     plt.figure()
@@ -515,7 +535,7 @@ def resample_bouts(sleep_bouts):
         bouts_resampled.append(resampled)
     return bouts_resampled
 
-def process_normalized(filenames, label, colors):
+def process_normalized(filenames):
     """
 
     :param filenames:
@@ -541,7 +561,8 @@ def process_normalized(filenames, label, colors):
         total_bouts += n_bouts_in_file
         n_files += 1
 
-    activity_mean = mean_of_bouts_normalized(lids_obj, all_bouts)
+    (activity_mean, confidence_intervals) = mean_of_bouts_normalized(lids_obj, all_bouts)
+    print('length activity_mean: ', len(activity_mean))
 
     # set x axis to show LIDS periods
     xs = np.linspace(0, MAX_PERIODS, len(activity_mean))
@@ -552,13 +573,11 @@ def process_normalized(filenames, label, colors):
     file_mean_smooth = spl(x_smooth)
 
     #age_interval_index = int(label.split('-')[0].split()[-1])  # Extract age interval from label
-    color = colors[label]  # Normalize age_interval_index to [0, 1]
-
     # Ensure that the x-axis ticks show integers (0, 1, 2, 3, 4, ...)
     num_ticks = 6  # You can adjust the number of ticks as needed
     plt.xticks(np.linspace(0, MAX_PERIODS, num_ticks), np.arange(num_ticks))
 
-    plt.plot(x_smooth, file_mean_smooth, label=label, color = color)
+    plt.plot(x_smooth, file_mean_smooth)
 
 def process_normalized_with_confidence_intervals(filenames, label, colors):
     """
@@ -585,10 +604,10 @@ def process_normalized_with_confidence_intervals(filenames, label, colors):
         total_bouts += n_bouts_in_file
         n_files += 1
 
-    activity_mean = mean_of_bouts_normalized(lids_obj, all_bouts)
+    (activity_mean, confidence_intervals) = mean_of_bouts_normalized(lids_obj, all_bouts)
 
     # set x axis to show LIDS periods
-    activity_mean = activity_mean[0:36] # shave activity mean to be of length 36, in order to be consistent with the len of bouts.
+    # shave activity mean to be of length 36, in order to be consistent with the len of bouts.
     xs = np.linspace(0, MAX_PERIODS, len(activity_mean))
 
     # Smooth the line a little bit
@@ -601,34 +620,8 @@ def process_normalized_with_confidence_intervals(filenames, label, colors):
         color = colors[label]  # Normalize age_interval_index to [0, 1]
 
     # Ensure that the x-axis ticks show integers (0, 1, 2, 3, 4, ...)
-    #num_ticks = 6  # You can adjust the number of ticks as needed
-    #plt.xticks(np.linspace(0, MAX_PERIODS, num_ticks), np.arange(num_ticks))
-
-    # shave the size of each of the bouts to be of length 36. If they aren't of that length, pad with zeros
-    padded_bouts = []
-    for bout in all_bouts:
-        bout_length = len(bout)
-        target_length = 36
-        if bout_length < target_length:
-            # Calculate the amount of padding needed
-            padding = target_length - bout_length
-
-            # Pad the array with zeros on the right side only, a constant value
-            padded_array = np.pad(bout, (0, padding), 'constant')
-            padded_bouts.append(padded_array)
-        else:
-            trimmed_bout = (bout[0:36])
-            padded_bouts.append(trimmed_bout)
-
-    print('padded bouts 1: ', len(padded_bouts[0]))
-    print('padded bouts 2: ', len(padded_bouts[1]))
-
-    # Calculate confidence intervals
-    confidence_intervals = []
-    for i in range(len(file_mean_smooth)):
-        print('i: ', i)
-        bout_values = [bout[i] for bout in padded_bouts]
-        confidence_intervals.append(1.96 * sem(bout_values))  # 95% confidence interval, assuming a normal distribution
+    num_ticks = 5  # You can adjust the number of ticks as needed
+    plt.xticks(np.linspace(0, MAX_PERIODS, num_ticks), np.arange(num_ticks))
 
     # Calculate coefficients for the linear line of best fit
     coefficients = np.polyfit(x_smooth, file_mean_smooth, deg=1)
@@ -859,31 +852,30 @@ directory = '/Users/awashburn/Library/CloudStorage/OneDrive-BowdoinCollege/Docum
 
 filenames = [filename for filename in os.listdir(directory) if filename.endswith('timeSeries.csv.gz')]      # CHANGE THIS BACK - to 'timeSeries.csv.gz'
 
-# for mean, non-normalized plot
-#padded_bouts = set_up_plot(filenames[1:2])  # FUNCTION CALL FOR NON-NORMALIZED LIDS GRAPH
+# 1) for mean, non-normalized plot
+padded_bouts = set_up_plot(filenames)  # FUNCTION CALL FOR NON-NORMALIZED LIDS GRAPH
 
-# outlier analysis
+# 2) outlier analysis
 #outlier_indices = box_plot_outliers(padded_bouts)
 #plot_outlier_bouts(outlier_indices, padded_bouts)
 
-# for the normalized plot, all filenames
-#create_figure()
-process_normalized_with_confidence_intervals(filenames[1:10], '', '')  # FUNCTION CALL FOR NORMALIZED LIDS GRAPH
-plt.show()
+# 3) for the normalized plot, all filenames
+#process_normalized_with_confidence_intervals(filenames[0:20], '', '')  # FUNCTION CALL FOR NORMALIZED LIDS GRAPH
+#plt.show()
 
 # define the dictionary, to look up age, sex, etiology information for each user
 #age_sex_etiology_dict = sex_age_bins_LIDS.initialize_user_dictionary('AgeSexDx_n166_2023-07-13.csv')
 
-### 1) create the normalized plot, BINNED BY SEX ###
+### 4) create the normalized plot, BINNED BY SEX ###
 #set_up_plot_sex_binned(filenames, age_sex_etiology_dict)
 
-### 2) create the normalized plot, BINNED BY AGE NORMALLY ###
+### 5) create the normalized plot, BINNED BY AGE NORMALLY ###
 #set_up_plot_age_binned_normal(filenames, age_sex_etiology_dict)
 
-### 3) create the normalized plot, BINNED BY AGE OVER UNDER 75 ###
+### 6) create the normalized plot, BINNED BY AGE OVER UNDER 75 ###
 #set_up_plot_age_binned_over_under_75(filenames, age_sex_etiology_dict)
 
-### 4) create the normalized plot, BINNED BY ETIOLOGY ###
+### 7) create the normalized plot, BINNED BY ETIOLOGY ###
 #set_up_plot_binned_etiology(filenames, age_sex_etiology_dict)
 
 
