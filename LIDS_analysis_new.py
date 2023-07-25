@@ -14,12 +14,13 @@ from scipy.interpolate import make_interp_spline
 import sex_age_bins_LIDS
 from matplotlib.colors import LinearSegmentedColormap
 from matplotlib.colors import ListedColormap
+from scipy.stats import sem
 
 # Create a LIDS object
 lids_obj = LIDS()
 
 # set max LIDS periods value
-MAX_PERIODS = 4
+MAX_PERIODS = 5
 max_x_value = MAX_PERIODS
 
 def read_input_data(filename):
@@ -163,7 +164,7 @@ def find_bouts(lids_obj, raw):
     #TODO - COMMENT OUT the code below if you don't want to delete the first 4 epochs
     all_bouts_first_4_epochs_removed = []
     for bout in bouts_transformed:
-        new_bout = bout[4:]
+        new_bout = bout[0:] # change to 4 if desired to filter out first 4 epochs.
         all_bouts_first_4_epochs_removed.append(new_bout)
 
     return all_bouts_first_4_epochs_removed
@@ -216,12 +217,12 @@ def set_up_plot(filenames):
 
         total_bouts += n_bouts_in_file
 
-    # Iterate over all bouts, removing the first 5 epochs. TODO - DELETE IF NOT WANTED
+    # Iterate over all bouts, removing the first 4 epochs. TODO - DELETE IF NOT WANTED
     temp_all_bouts = []
     for bout in all_bouts_all_files:
         filename = bout[1]
         print('bout 0: ', bout[0])
-        new_bout = bout[0].iloc[4:]
+        new_bout = bout[0].iloc[0:] # change to 4 if desired to filter out first 4 epochs.
         bout_tuple = (new_bout, filename)
 
         temp_all_bouts.append(bout_tuple)
@@ -243,6 +244,7 @@ def set_up_plot(filenames):
         else:
             bout_and_filename = (bout[0][0:36], filename)
             padded_bouts.append(bout_and_filename)
+
 
     plt.figure()
 
@@ -553,29 +555,104 @@ def process_normalized(filenames, label, colors):
     color = colors[label]  # Normalize age_interval_index to [0, 1]
 
     # Ensure that the x-axis ticks show integers (0, 1, 2, 3, 4, ...)
-    num_ticks = 5  # You can adjust the number of ticks as needed
+    num_ticks = 6  # You can adjust the number of ticks as needed
     plt.xticks(np.linspace(0, MAX_PERIODS, num_ticks), np.arange(num_ticks))
 
     plt.plot(x_smooth, file_mean_smooth, label=label, color = color)
 
+def process_normalized_with_confidence_intervals(filenames, label, colors):
+    """
 
+        :param filenames:
+        :param label: label, for legend if applicable.
+        :param colors: a list of colors, if using bins will have multiple colors.
+        :return:
+        """
+    all_bouts = []
+    total_bouts = 0
+    n_files = 0
+    for i in range(len(filenames)):
 
-def create_figure():
-    plt.figure()
-    # set label for x axis
-    plt.xlabel('period')
-    # set label for y axis
-    plt.ylabel('inactivity')
-    # set title
-    plt.title('LIDS normalized mean for Male = 84, Female = 82')
+        print('file being processed: ', i)
+        print('associated filename: ', filenames[i])
 
-    # If you want to add a legend title, you can use:
-    #plt.legend(title='Legend')
+        (all_bouts_from_file, n_bouts_in_file) = per_file_no_mean(filenames[i])
 
-    # The plt.legend() function will use the labels specified in the process_normalized function.
+        # append each bout from the file seperately to the list of ALL bouts
+        for bout in all_bouts_from_file:
+            all_bouts.append(bout)
 
-    # If you want to change the legend's location, you can use:
-    #plt.legend(loc='lower right')  # Or 'upper right', 'lower left', 'lower right', etc.
+        total_bouts += n_bouts_in_file
+        n_files += 1
+
+    activity_mean = mean_of_bouts_normalized(lids_obj, all_bouts)
+
+    # set x axis to show LIDS periods
+    activity_mean = activity_mean[0:36] # shave activity mean to be of length 36, in order to be consistent with the len of bouts.
+    xs = np.linspace(0, MAX_PERIODS, len(activity_mean))
+
+    # Smooth the line a little bit
+    x_smooth = xs
+    spl = make_interp_spline(xs, activity_mean)
+    file_mean_smooth = spl(x_smooth)
+
+    # age_interval_index = int(label.split('-')[0].split()[-1])  # Extract age interval from label
+    if colors != '':
+        color = colors[label]  # Normalize age_interval_index to [0, 1]
+
+    # Ensure that the x-axis ticks show integers (0, 1, 2, 3, 4, ...)
+    #num_ticks = 6  # You can adjust the number of ticks as needed
+    #plt.xticks(np.linspace(0, MAX_PERIODS, num_ticks), np.arange(num_ticks))
+
+    # shave the size of each of the bouts to be of length 36. If they aren't of that length, pad with zeros
+    padded_bouts = []
+    for bout in all_bouts:
+        bout_length = len(bout)
+        target_length = 36
+        if bout_length < target_length:
+            # Calculate the amount of padding needed
+            padding = target_length - bout_length
+
+            # Pad the array with zeros on the right side only, a constant value
+            padded_array = np.pad(bout, (0, padding), 'constant')
+            padded_bouts.append(padded_array)
+        else:
+            trimmed_bout = (bout[0:36])
+            padded_bouts.append(trimmed_bout)
+
+    print('padded bouts 1: ', len(padded_bouts[0]))
+    print('padded bouts 2: ', len(padded_bouts[1]))
+
+    # Calculate confidence intervals
+    confidence_intervals = []
+    for i in range(len(file_mean_smooth)):
+        print('i: ', i)
+        bout_values = [bout[i] for bout in padded_bouts]
+        confidence_intervals.append(1.96 * sem(bout_values))  # 95% confidence interval, assuming a normal distribution
+
+    # Calculate coefficients for the linear line of best fit
+    coefficients = np.polyfit(x_smooth, file_mean_smooth, deg=1)
+
+    # Generate the y values for the line of best fit
+    line_of_best_fit = np.polyval(coefficients, x_smooth)
+
+    # CASE FOR NON-BINNED DATA.
+    if colors == '' and label == '':
+        plt.xlabel('period')
+        plt.ylabel('inactivity')
+        plt.title('Normalized Activity')
+        plt.plot(x_smooth, file_mean_smooth)
+        plt.fill_between(x_smooth, file_mean_smooth - confidence_intervals, file_mean_smooth + confidence_intervals,
+                         alpha=0.2)
+
+    else:
+        # CASE FOR BINNED DATA - setting up plot already done in helper methods.
+        # Plot the line of best fit using the same color as the one passed as a parameter
+        plt.plot(x_smooth, line_of_best_fit, color=color, linestyle='dashed')
+
+        plt.plot(x_smooth, file_mean_smooth, label=label, color=color)
+        plt.fill_between(x_smooth, file_mean_smooth - confidence_intervals, file_mean_smooth + confidence_intervals,
+                     color=color, alpha=0.2)
 
 
 def normalized_binned_by_sex(filenames, age_sex_etiology_dict):
@@ -601,39 +678,180 @@ def normalized_binned_by_sex(filenames, age_sex_etiology_dict):
     male_female_file_list_tuple = (male_filenames_list, female_filenames_list)
     return male_female_file_list_tuple
 
-def normalized_binned_by_age(filenames, age_sex_etiology_dict):
-    age_40to70_list = []
-    age_70to80_list = []
-    age_80to100_list = []
+def normalized_binned_by_age(filenames, age_sex_etiology_dict, bin_type):
+    """
+
+    :param filenames:
+    :param age_sex_etiology_dict:
+    :param bin_type: describes which way to bin by age, when trying different binning iterations
+    :return:
+    """
+    if bin_type == 'Normal':
+        age_40to70_list = []
+        age_70to80_list = []
+        age_80to100_list = []
+
+        for filename in filenames:
+            filename = filename.replace("-timeSeries.csv.gz", "")
+            age = age_sex_etiology_dict[filename][0]
+            if age >= 40 and age < 70:
+                age_40to70_list.append(filename + "-timeSeries.csv.gz")
+            elif age >= 70 and age < 80:
+                age_70to80_list.append(filename + "-timeSeries.csv.gz")
+            elif age >= 80 and age <= 100:
+                age_80to100_list.append(filename + "-timeSeries.csv.gz")
+
+        print('len filename 40-70: ', len(age_40to70_list))
+        print('len filename 70-80: ', len(age_70to80_list))
+        print('len filename 80-100: ', len(age_80to100_list))
+
+        return (age_40to70_list, age_70to80_list, age_80to100_list)
+
+    elif bin_type == 'over_under_75':
+        under_75_files = []
+        over_75_files = []
+
+        for filename in filenames:
+            filename = filename.replace("-timeSeries.csv.gz", "")
+            age = age_sex_etiology_dict[filename][0]
+            if age < 75:
+                under_75_files.append(filename + "-timeSeries.csv.gz")
+            else:
+                # age is over 75
+                over_75_files.append(filename + "-timeSeries.csv.gz")
+
+        print('files under 75: ', len(under_75_files))
+        print('files over 75: ', len(over_75_files))
+        return (under_75_files, over_75_files)
+
+def normalized_binned_by_etiology(filenames, age_sex_etiology_dict):
+    """
+    Generates a list of filenames for subjects of sex Male and Female, by looking them up in the demographics
+    dictionary.
+    :param filenames: the list of all 166 filenames
+    :param age_sex_etiology_dict: the dictionary containing sex information about all n=166 filenames
+    :return: male_female_file_list_tuple - a tuple, containing the male and female filename lists, respectively.
+    """
+    HC_filenames_list = []
+    AD_filenames_list = []
+    LB_filenames_list = []
+    other_filenames_list = []   # ignore this, since we won't plot them.
 
     for filename in filenames:
         filename = filename.replace("-timeSeries.csv.gz", "")
-        age = age_sex_etiology_dict[filename][0]
-        if age >= 40 and age < 70:
-            age_40to70_list.append(filename + "-timeSeries.csv.gz")
-        elif age >= 70 and age < 80:
-            age_70to80_list.append(filename + "-timeSeries.csv.gz")
-        elif age >= 80 and age <= 100:
-            age_80to100_list.append(filename + "-timeSeries.csv.gz")
+        etiology = age_sex_etiology_dict[filename][2]
+        if etiology == 'HC':
+            HC_filenames_list.append(filename + "-timeSeries.csv.gz")
+        elif etiology == 'AD':
+            AD_filenames_list.append(filename + "-timeSeries.csv.gz")
+        elif etiology == 'LB':
+            LB_filenames_list.append(filename + "-timeSeries.csv.gz")
+        else:
+            # etiology must be "other"
+            other_filenames_list.append(other_filenames_list)
 
-    print('len filename 40-70: ', len(age_40to70_list))
-    print('len filename 70-80: ', len(age_70to80_list))
-    print('len filename 80-100: ', len(age_80to100_list))
+    etiology_file_list_tuple = (HC_filenames_list, AD_filenames_list, LB_filenames_list)
+    return etiology_file_list_tuple     # order of tuple is HC, AD, LB
 
-    return (age_40to70_list, age_70to80_list, age_80to100_list)
+def set_up_plot_sex_binned(filenames, age_sex_etiology_dict):
+
+    (male_filenames, female_filenames) = normalized_binned_by_sex(filenames, age_sex_etiology_dict)
+    # Define the age intervals and lists
+    sex_intervals = ['Males', 'Females']
+    sex_lists = [male_filenames, female_filenames]
+    # create a color map
+    # Define custom colors for the colormap
+    colors_sex = {
+        'Males': (0, 0, 1),  # Blue
+        'Females': (1, 0.5, 0.5) # Pink
+    }
+    # Create the figure
+    plt.figure()
+    plt.xlabel('period')
+    plt.ylabel('inactivity')
+    plt.title('Normalized Activity')
+    # Call process_normalized for each age interval and plot with appropriate color
+    for i, sex in enumerate(sex_intervals):
+        process_normalized_with_confidence_intervals(sex_lists[i], sex, colors_sex)
+    # Add the legend with custom title and location
+    plt.legend(title='Sex', loc='upper right')
+    plt.show()
+
+
+def set_up_plot_age_binned_normal(filenames, age_sex_etiology_dict):
+    (age_40to70_list, age_70to80_list, age_80to100_list) = normalized_binned_by_age(filenames, age_sex_etiology_dict, 'Normal') # bin type is 'Normal'
+    # Define the age intervals and lists
+    age_intervals = ['age 40-70', 'age 70-80', 'age 80-100']
+    age_lists = [age_40to70_list, age_70to80_list, age_80to100_list]
+    # create a color map
+    # Define custom colors for the colormap
+    colors_age = {
+        'age 40-70': (0, 0.7, 0),  # Green (RGB values from 0 to 1)
+        'age 70-80': (0.4, 0.4, 0.9),  # Blue
+        'age 80-100': (0.7, 0, 0.7),  # Red
+    }
+    # Create the figure
+    plt.figure()
+    plt.xlabel('period')
+    plt.ylabel('inactivity')
+    plt.title('Normalized Activity')
+    # Call process_normalized for each age interval and plot with appropriate color
+    for i, age_interval in enumerate(age_intervals):
+        process_normalized_with_confidence_intervals(age_lists[i], age_interval, colors_age)
+    # Add the legend with custom title and location
+    plt.legend(title='Age Interval', loc='upper right')
+    plt.show()
+
+def set_up_plot_age_binned_over_under_75(filenames, age_sex_etiology_dict):
+    (under_75_list, over_75_list) = normalized_binned_by_age(filenames, age_sex_etiology_dict, 'over_under_75')
+    # Define the age intervals and lists
+    age_intervals = ['under 75', 'over 75']
+    age_lists = [under_75_list, over_75_list]
+    # create a color map
+    # Define custom colors for the colormap
+    colors_age = {
+        'under 75': (0, 1, 0),  # Green (RGB values from 0 to 1)
+        'over 75': (1, 0, 0),  # Red
+    }
+    # Create the figure
+    plt.figure()
+    plt.xlabel('period')
+    plt.ylabel('inactivity')
+    plt.title('Normalized Activity')
+    # Call process_normalized for each age interval and plot with appropriate color
+    for i, age_interval in enumerate(age_intervals):
+        process_normalized_with_confidence_intervals(age_lists[i], age_interval, colors_age)
+    # Add the legend with custom title and location
+    plt.legend(title='Age Interval', loc='upper right')
+    plt.show()
+
+def set_up_plot_binned_etiology(filenames, age_sex_etiology_dict):
+    (HC_filenames_list, AD_filenames_list, LB_filenames_list) = normalized_binned_by_etiology(filenames, age_sex_etiology_dict)
+    # Define the age intervals and lists
+    etiology_intervals = ['HC', 'AD', 'LB']
+    etiology_lists = [HC_filenames_list, AD_filenames_list, LB_filenames_list]
+    # create a color map
+    # Define custom colors for the colormap
+    colors_etiology = {
+        'HC': (0, 1, 0),  # Green (RGB values from 0 to 1)
+        'AD': (1, 0, 0),  # Red
+        'LB': (0, 0, 1)   # Blue
+    }
+    # Create the figure
+    plt.figure()
+    plt.xlabel('period')
+    plt.ylabel('inactivity')
+    plt.title('Normalized Activity')
+    # Call process_normalized for each age interval and plot with appropriate color
+    for i, etiology in enumerate(etiology_intervals):
+        process_normalized_with_confidence_intervals(etiology_lists[i], etiology, colors_etiology)
+    # Add the legend with custom title and location
+    plt.legend(title='Etiology', loc='upper right')
+    plt.show()
+
 
 
 ''' FUNCTION CALLS '''
-
-#filename = '67067_0000000131-timeSeries.csv.gz'
-#raw = read_input_data(filename)
-
-#print('raw type: ', type(raw))
-#print('raw type data: ', type(raw.data))
-
-
-# test lids functionality
-#LIDS_functionality_test(lids_obj, raw)
 
 #### LIDS GRAPHICAL ANALYSIS ####
 directory = '/Users/awashburn/Library/CloudStorage/OneDrive-BowdoinCollege/Documents/' \
@@ -650,52 +868,23 @@ filenames = [filename for filename in os.listdir(directory) if filename.endswith
 
 # for the normalized plot, all filenames
 #create_figure()
-#process_normalized(filenames[1:2])  # FUNCTION CALL FOR NORMALIZED LIDS GRAPH
-#plt.show()
+process_normalized_with_confidence_intervals(filenames[1:10], '', '')  # FUNCTION CALL FOR NORMALIZED LIDS GRAPH
+plt.show()
+
+# define the dictionary, to look up age, sex, etiology information for each user
+#age_sex_etiology_dict = sex_age_bins_LIDS.initialize_user_dictionary('AgeSexDx_n166_2023-07-13.csv')
 
 ### 1) create the normalized plot, BINNED BY SEX ###
-age_sex_etiology_dict = sex_age_bins_LIDS.initialize_user_dictionary('AgeSexDx_n166_2023-07-13.csv')
-#(male_filenames, female_filenames) = normalized_binned_by_sex(filenames, age_sex_etiology_dict)
-#print('length male: ', len(male_filenames))
-#print('length female: ', len(female_filenames))
+#set_up_plot_sex_binned(filenames, age_sex_etiology_dict)
 
-#create_figure()
+### 2) create the normalized plot, BINNED BY AGE NORMALLY ###
+#set_up_plot_age_binned_normal(filenames, age_sex_etiology_dict)
 
-#process_normalized(male_filenames, 'Male (n = 84)', color = '#00BFFF') # blue
-#process_normalized(female_filenames, 'Female (n = 82)', color = '#FF69B4') #pink
+### 3) create the normalized plot, BINNED BY AGE OVER UNDER 75 ###
+#set_up_plot_age_binned_over_under_75(filenames, age_sex_etiology_dict)
 
-#plt.show()
-
-### 2) create the normalized plot, BINNED BY AGE ###
-(age_40to70_list, age_70to80_list, age_80to100_list) = normalized_binned_by_age(filenames, age_sex_etiology_dict)
-# Define the age intervals and lists
-age_intervals = ['age 40-70', 'age 70-80', 'age 80-100']
-
-age_lists = [age_40to70_list[0:5], age_70to80_list[0:5], age_80to100_list[0:5]]
-
-# create a color map
-# Define custom colors for the colormap
-
-colors_age = {
-        'age 40-70': (0.7, 0.9, 0.7),  # Light Green (RGB values from 0 to 1)
-        'age 70-80': (0.4, 0.7, 0.9),  # Blue
-        'age 80-100': (0.6, 0.4, 0.9),  # Purple
-    }
-
-# Create the figure
-plt.figure()
-plt.xlabel('period')
-plt.ylabel('inactivity')
-plt.title('Normalized Activity')
-
-# Call process_normalized for each age interval and plot with appropriate color
-for i, age_interval in enumerate(age_intervals):
-    process_normalized(age_lists[i], age_interval, colors_age)
-
-# Add the legend with custom title and location
-plt.legend(title='Age Interval', loc='upper right')
-
-plt.show()
+### 4) create the normalized plot, BINNED BY ETIOLOGY ###
+#set_up_plot_binned_etiology(filenames, age_sex_etiology_dict)
 
 
 

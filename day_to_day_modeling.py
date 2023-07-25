@@ -22,3 +22,8 @@ def import_data(subjective_data_filename, objective_data_filename, diagnosis_dat
     return subjective_sleep_df, objective_sleep_df, diagnosis_data_df
 
 
+'''FUNCTION CALLS'''
+subjective_data_filename = 'ActigraphyDatabase-FullSleepLogs_DATA_LABELS_2023-07-24_1554.csv'
+objective_data_filename =
+
+
