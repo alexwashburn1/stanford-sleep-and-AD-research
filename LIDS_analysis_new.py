@@ -164,7 +164,7 @@ def find_bouts(lids_obj, raw):
     #TODO - COMMENT OUT the code below if you don't want to delete the first 4 epochs
     all_bouts_first_4_epochs_removed = []
     for bout in bouts_transformed:
-        new_bout = bout[0:] # change to 4 if desired to filter out first 4 epochs.
+        new_bout = bout[4:] # change to 4 if desired to filter out first 4 epochs.
         all_bouts_first_4_epochs_removed.append(new_bout)
 
     return all_bouts_first_4_epochs_removed
@@ -750,16 +750,15 @@ def set_up_plot_sex_binned(filenames, age_sex_etiology_dict):
 
     (male_filenames, female_filenames) = normalized_binned_by_sex(filenames, age_sex_etiology_dict)
     # Define the age intervals and lists
-    sex_intervals = ['Males', 'Females']
+    sex_intervals = ['Male', 'Female']
     sex_lists = [male_filenames, female_filenames]
     # create a color map
     # Define custom colors for the colormap
     colors_sex = {
-        'Males': (0, 0, 1),  # Blue
-        'Females': (1, 0.5, 0.5) # Pink
+        'Male': (0, 0, 1),  # Blue
+        'Female': (1, 0.5, 0.5) # Pink/orange
     }
     # Create the figure
-    plt.figure()
     plt.xlabel('period')
     plt.ylabel('inactivity')
     plt.title('Normalized Activity')
@@ -768,7 +767,6 @@ def set_up_plot_sex_binned(filenames, age_sex_etiology_dict):
         process_normalized_with_confidence_intervals(sex_lists[i], sex, colors_sex)
     # Add the legend with custom title and location
     plt.legend(title='Sex', loc='upper right')
-    plt.show()
 
 
 def set_up_plot_age_binned_normal(filenames, age_sex_etiology_dict):
@@ -784,7 +782,6 @@ def set_up_plot_age_binned_normal(filenames, age_sex_etiology_dict):
         'age 80-100': (0.7, 0, 0.7),  # Red
     }
     # Create the figure
-    plt.figure()
     plt.xlabel('period')
     plt.ylabel('inactivity')
     plt.title('Normalized Activity')
@@ -793,7 +790,7 @@ def set_up_plot_age_binned_normal(filenames, age_sex_etiology_dict):
         process_normalized_with_confidence_intervals(age_lists[i], age_interval, colors_age)
     # Add the legend with custom title and location
     plt.legend(title='Age Interval', loc='upper right')
-    plt.show()
+
 
 def set_up_plot_age_binned_over_under_75(filenames, age_sex_etiology_dict):
     (under_75_list, over_75_list) = normalized_binned_by_age(filenames, age_sex_etiology_dict, 'over_under_75')
@@ -807,7 +804,6 @@ def set_up_plot_age_binned_over_under_75(filenames, age_sex_etiology_dict):
         'over 75': (1, 0, 0),  # Red
     }
     # Create the figure
-    plt.figure()
     plt.xlabel('period')
     plt.ylabel('inactivity')
     plt.title('Normalized Activity')
@@ -816,7 +812,7 @@ def set_up_plot_age_binned_over_under_75(filenames, age_sex_etiology_dict):
         process_normalized_with_confidence_intervals(age_lists[i], age_interval, colors_age)
     # Add the legend with custom title and location
     plt.legend(title='Age Interval', loc='upper right')
-    plt.show()
+
 
 def set_up_plot_binned_etiology(filenames, age_sex_etiology_dict):
     (HC_filenames_list, AD_filenames_list, LB_filenames_list) = normalized_binned_by_etiology(filenames, age_sex_etiology_dict)
@@ -831,7 +827,6 @@ def set_up_plot_binned_etiology(filenames, age_sex_etiology_dict):
         'LB': (0, 0, 1)   # Blue
     }
     # Create the figure
-    plt.figure()
     plt.xlabel('period')
     plt.ylabel('inactivity')
     plt.title('Normalized Activity')
@@ -840,7 +835,7 @@ def set_up_plot_binned_etiology(filenames, age_sex_etiology_dict):
         process_normalized_with_confidence_intervals(etiology_lists[i], etiology, colors_etiology)
     # Add the legend with custom title and location
     plt.legend(title='Etiology', loc='upper right')
-    plt.show()
+
 
 
 
@@ -853,7 +848,7 @@ directory = '/Users/awashburn/Library/CloudStorage/OneDrive-BowdoinCollege/Docum
 filenames = [filename for filename in os.listdir(directory) if filename.endswith('timeSeries.csv.gz')]      # CHANGE THIS BACK - to 'timeSeries.csv.gz'
 
 # 1) for mean, non-normalized plot
-padded_bouts = set_up_plot(filenames)  # FUNCTION CALL FOR NON-NORMALIZED LIDS GRAPH
+#padded_bouts = set_up_plot(filenames)  # FUNCTION CALL FOR NON-NORMALIZED LIDS GRAPH
 
 # 2) outlier analysis
 #outlier_indices = box_plot_outliers(padded_bouts)
@@ -864,19 +859,25 @@ padded_bouts = set_up_plot(filenames)  # FUNCTION CALL FOR NON-NORMALIZED LIDS G
 #plt.show()
 
 # define the dictionary, to look up age, sex, etiology information for each user
-#age_sex_etiology_dict = sex_age_bins_LIDS.initialize_user_dictionary('AgeSexDx_n166_2023-07-13.csv')
+age_sex_etiology_dict = sex_age_bins_LIDS.initialize_user_dictionary('AgeSexDx_n166_2023-07-13.csv')
 
 ### 4) create the normalized plot, BINNED BY SEX ###
-#set_up_plot_sex_binned(filenames, age_sex_etiology_dict)
+plt.figure()
+set_up_plot_sex_binned(filenames, age_sex_etiology_dict)
 
 ### 5) create the normalized plot, BINNED BY AGE NORMALLY ###
-#set_up_plot_age_binned_normal(filenames, age_sex_etiology_dict)
+plt.figure()
+set_up_plot_age_binned_normal(filenames, age_sex_etiology_dict)
 
 ### 6) create the normalized plot, BINNED BY AGE OVER UNDER 75 ###
-#set_up_plot_age_binned_over_under_75(filenames, age_sex_etiology_dict)
+plt.figure()
+set_up_plot_age_binned_over_under_75(filenames, age_sex_etiology_dict)
 
 ### 7) create the normalized plot, BINNED BY ETIOLOGY ###
-#set_up_plot_binned_etiology(filenames, age_sex_etiology_dict)
+plt.figure()
+set_up_plot_binned_etiology(filenames, age_sex_etiology_dict)
+
+plt.show()
 
 
 
