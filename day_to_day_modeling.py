@@ -3,6 +3,7 @@ import csv
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
+import math
 
 def import_data(subjective_data_filename_all, subjective_data_filename_1, subjective_data_filename_2,
                 objective_data_filename, diagnosis_data_filename):
@@ -27,58 +28,77 @@ def import_data(subjective_data_filename_all, subjective_data_filename_1, subjec
     return (subjective_sleep_df_all, subjective_sleep_df_July_2023, subjective_sleep_df_REDCAP_fixed,
     objective_sleep_df, diagnosis_data_df)
 
-def merge_two_REDCAP_files(subjective_sleep_df_July_2023, subjective_sleep_df_REDCAP_fixed):
+def subjective_long_add_filename(subjective_sleep_df_all, filepath):
     """
-    adds any of the lines from the REDCAP fixed file to the end of the July 2023 file, under the condition that
-    there is not a corresponding row with the filename and date already.
-    :param subjective_sleep_df_July_2023: the REDCAP file that was already in proper format
-    :param subjective_sleep_df_REDCAP_fixed: the REDCAP file that I personally fixed
-    :return: merged df - July 2023 df that has extra rows at the end of it from REDCAP file that are new.
+    Add the filename to each row in the long format data table, so things can be matched with objective sleep data
+    by filename and date.
+    :param subjective_data_filename_all: the file containing subjective sleep metrics for all data.
+    :return:
     """
 
-    # Step 1: Define the possible date formats
-    date_formats = ['%m/%d/%y', '%m/%d/%y %H:%M']
-
-    # Step 2: Convert 'date' column in subjective_sleep_df_July_2023 to datetime
-    subjective_sleep_df_July_2023['Date'] = pd.to_datetime(subjective_sleep_df_July_2023['Date'], errors='coerce')
-
-    # Step 3: Convert 'date' column in subjective_sleep_df_REDCAP_fixed using multiple formats
-    for date_format in date_formats:
-        converted_dates = pd.to_datetime(subjective_sleep_df_REDCAP_fixed['Date'], format=date_format, errors='coerce')
-        if not converted_dates.isna().all():
-            # At least one format succeeded, update the 'date' column
-            subjective_sleep_df_REDCAP_fixed['Date'] = converted_dates
-            break
-
-    # 2) iterate over rows in the REDCAP fixed file, and check if there is a match for both date and filename values
-    print('length of the July 2023 file: ', len(subjective_sleep_df_July_2023))
-    all_matching_rows = []
-    for index, row in subjective_sleep_df_REDCAP_fixed.iterrows():
-        # extract row and date from REDCAP fixed file
+    #1) keep iterating over rows, until a row is found that has a value for the filename
+    for index, row in subjective_sleep_df_all.iterrows():
+        print('file name: ', row['File Name'])
         filename = row['File Name']
-        date = row['Date']
+        Study_ID = row['Study ID']
+        if pd.notna(filename):
+            print('filename: ', filename)
+            # 2) add that filename to all the other rows in the df that have the same value for 'Study ID'
+            for index_2, row_2 in subjective_sleep_df_all.iterrows():
 
-        # check for matches in July 2023 file
-        matching_rows = subjective_sleep_df_July_2023[
-            (subjective_sleep_df_July_2023['File Name'] == filename) &
-            (subjective_sleep_df_July_2023['Date'] == date)
-            ]
-        all_matching_rows.append(matching_rows)
+                if pd.isna(row_2['File Name']) and row_2['Study ID'] == Study_ID:
+                    print('entered!')
 
-        if matching_rows.empty:
-            print(f'no matching rows found for {filename} on {date}.')
+                    # update filename
+                    subjective_sleep_df_all.loc[index_2, 'File Name'] = filename
 
-        elif not matching_rows.empty:
-            print(f'match found for {filename} on {date}:')
-            print(matching_rows)
+    # 3) delete the rows that have no values for excel columns L-Z (these only show the filename but contain no data).
+    subset_columns = ['Overall quality', 'Deep Sleep', 'Well-rested', 'Mentally Alert']
+    subjective_sleep_df_all = subjective_sleep_df_all.dropna(subset=subset_columns, how='all')
+
+    # 4) export the modified df as a csv to the same directory, for viewing
+    print('exporting')
+    subjective_sleep_df_all.to_csv(filepath + 'ActigraphyDatabase-FullSleepLogs_ID_imputed.csv', index=False)
+
+    # df is now ready to be merged with objective data
+    return subjective_sleep_df_all
+
+def reformat_date_european_to_american_objective(objective_sleep_df, filepath):
+    """
+    the objective sleep df has date formatted in European format. Reformat it to be in American format to be consistent.
+    :param objective_sleep_df: the objective sleep data frame
+    :return:
+    """
+    # Step 1: Use the str.replace() method to remove ".RData" from the "File Name" column
+    objective_sleep_df['filename'].str.replace(r'\.RData$', '', regex=True)
+
+    objective_sleep_df['calendar_date'] = pd.to_datetime(objective_sleep_df['calendar_date'], format='%d/%m/%Y',
+                                                         errors='coerce')
+
+    # Step 2: Convert the "calendar_date" column to the desired format 'mm/dd/yy'
+    objective_sleep_df['calendar_date'] = objective_sleep_df['calendar_date'].dt.strftime('%m/%d/%y')
+
+    for index_a, row_a in objective_sleep_df.iterrows():
+        print('date: ', row_a['calendar_date'])
+
+    #rename the 'calendar_date' column to 'Date'
+    objective_sleep_df.rename(columns={"calendar_date": "Date", "filename": "File Name"}, inplace=True)
 
 
 
+    # export
+    objective_sleep_df.to_csv(filepath + 'part4_nightsummary_sleep_cleaned_fixed_date.csv', index=False)
+    return objective_sleep_df
 
-    # 2) if there is a line in the July 2023 file that has a matching date and matching file ID, skip the REDCAP row
-    # 3) if not, append the REDCAP row to the end of the file
-
-
+def merge_objective_subjective_files(subjective_sleep_df_all_fixed, objective_sleep_df_fixed):
+    """
+    Merge rows in the subjective and objective dfs by filename and date.
+    :param subjective_sleep_df_all_fixed:
+    :param objective_sleep_df_fixed:
+    :return:
+    """
+    merged_df = pd.merge(subjective_sleep_df_all_fixed, objective_sleep_df_fixed, on=['File Name', 'Date'], how='inner')
+    merged_df.to_csv(filepath + 'objective_subjective_merged.csv', index=False)
 
 
 '''FUNCTION CALLS'''
@@ -93,8 +113,15 @@ diagnosis_data_filename = 'AgeSexDx_n166_2023-07-13.csv'
     objective_sleep_df, diagnosis_data_df) = import_data(subjective_data_filename_all, subjective_data_filename_1, subjective_data_filename_2,
                 objective_data_filename, diagnosis_data_filename)
 
+filepath = '/Users/awashburn/Library/CloudStorage/OneDrive-BowdoinCollege/Documents/' \
+                 'Mormino-Lab-Internship/Python-Projects/Actigraphy-Testing/day-to-day-modeling-files/'
 
-merge_two_REDCAP_files(subjective_sleep_df_July_2023, subjective_sleep_df_REDCAP_fixed)
+subjective_sleep_df_all_fixed = subjective_long_add_filename(subjective_sleep_df_all, filepath)
+objective_sleep_df_fixed = reformat_date_european_to_american_objective(objective_sleep_df, filepath)
+merge_objective_subjective_files(subjective_sleep_df_all_fixed, objective_sleep_df_fixed)
+
+
+
 
 
 
