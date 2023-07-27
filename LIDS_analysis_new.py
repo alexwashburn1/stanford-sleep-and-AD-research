@@ -71,9 +71,10 @@ def LIDS_functionality_test(LIDS_obj, raw):
 
 
     # plot the LIDS transformed data
+    print('about to plot (b)')
     plt.plot(lids_transformed)
 
-    plt.show()
+
 
 def extract_bout(raw, start, end):
     """
@@ -134,8 +135,6 @@ def find_bouts(lids_obj, raw):
     # default threshold = 0.15, according to <15% threshold used in LIDs methods (Winnebeck 2018)
     # iterate through the wakes and sleeps and find the on and off times
     sleep_wakes = []
-    print('length sleeps: ', len(sleeps))
-    print('length of the wakes: ', len(wakes))
     for i in range(len(wakes)):
         sleep_wakes.append((sleeps[i], wakes[i]))  # append the tuple of the on and off times
     # iterate through the sleep_wakes and find the duration/timeseries of each sleep. Append to sleep_bouts.
@@ -159,7 +158,6 @@ def find_bouts(lids_obj, raw):
         else:   # don't transform
             bouts_transformed.append(sleep_bouts_filtered[i])
 
-        #plot_bouts(bouts_transformed)
 
     #TODO - COMMENT OUT the code below if you don't want to delete the first 4 epochs
     all_bouts_first_4_epochs_removed = []
@@ -204,8 +202,9 @@ def set_up_plot(filenames):
     :param filenames: the filenames to include in the ultimate LIDS graph
     :return: padded_bouts: the bouts trimmed or padded appropriately to be 6 hours.
     """
-    all_bouts_all_files = []
     total_bouts = 0
+    count_of_invalid_bouts = 0
+    all_bouts_all_files = []
     for i in range(len(filenames)):
         print('processing file: ', i)
         (all_bouts_from_file, n_bouts_in_file) = per_file_no_mean(filenames[i])
@@ -213,7 +212,15 @@ def set_up_plot(filenames):
         for j in range(len(all_bouts_from_file)):
             # append the bouts from each file to the total list of bouts
             bout_with_filename = (all_bouts_from_file[j], filenames[i])
-            all_bouts_all_files.append(bout_with_filename)
+
+            (lids_period, r, p, MRI, onset_phase, offset_phase) = cosine_fit(lids_obj, bout_with_filename[0])
+
+            if p < 0.05:
+                all_bouts_all_files.append(bout_with_filename)
+            else:
+                print('i: ', i)
+                print('lids period: ', lids_period)
+                count_of_invalid_bouts += 1
 
         total_bouts += n_bouts_in_file
 
@@ -221,7 +228,6 @@ def set_up_plot(filenames):
     temp_all_bouts = []
     for bout in all_bouts_all_files:
         filename = bout[1]
-        print('bout 0: ', bout[0])
         new_bout = bout[0].iloc[0:] # change to 4 if desired to filter out first 4 epochs.
         bout_tuple = (new_bout, filename)
 
@@ -278,13 +284,13 @@ def set_up_plot(filenames):
        bout_values = [bout[0][i] for bout in padded_bouts if bout[0][i] != 0]
        confidence_intervals.append(1.96 * sem(bout_values))  # 95% confidence interval, assuming a normal distribution
 
-    plt.title(f'mean of {total_bouts} bouts')
+    plt.title(f'mean of {len(padded_bouts)} bouts')
 
+    print('about to plot (c)')
     plt.plot(x_axis_minutes, total_mean)
     plt.fill_between(x_axis_minutes, total_mean - confidence_intervals, total_mean + confidence_intervals,
                      alpha=0.2)
 
-    plt.show()
 
     return padded_bouts
 
@@ -354,7 +360,6 @@ def box_plot_outliers(padded_bouts):
         # Plot the original x-axis values with jittered y-axis values
         plt.scatter(x_jittered, y_jittered, marker='o', alpha=0.3, color='blue', s=6)
 
-    plt.show()
 
     print('outliers indices: ', outliers_indices)
     return outliers_indices
@@ -400,11 +405,7 @@ def plot_outlier_bouts(outliers_indices, padded_bouts):
     # Adjust layout to avoid overlap of subplots
     plt.tight_layout()
 
-    plt.show()
 
-
-def plot_outlier_entire_record():
-    return 0 # temp
 
 
 def cosine_fit(lids_obj, bout):
@@ -414,15 +415,44 @@ def cosine_fit(lids_obj, bout):
     :param bout:
     :return: period
     """
-    lids_obj.lids_fit(lids=bout, nan_policy='omit', verbose=False)
+    lids_obj.lids_fit(lids=bout, nan_policy='omit', bounds=('30min', '180min'), verbose=False) # CHANGE TO 180 MIN
 
     # statistics
-    lids_period = lids_obj.lids_fit_results.params['period']
-    #print('LIDS period: ', lids_period)
+    lids_period = lids_obj.lids_fit_results.params['period'].value # comment in * 10
 
-    correlation_factor = lids_obj.lids_pearson_r(bout)
-    #print('pearson correlation factor: ', correlation_factor)
-    return lids_period.value
+    if str(lids_period) == '17.5':
+        x_axis_minutes = np.arange(0, len(bout) * 10, 10)
+        temp_bout = bout
+        #plt.figure()
+        #plt.xlabel('minutes since sleep onset')
+        #plt.ylabel('inactivity')
+        #plt.title('LIDS transformed data for bout with LIDS period >= 175')
+        #plt.plot(x_axis_minutes, temp_bout)
+        #plt.show()
+
+
+    else:
+        x_axis_minutes = np.arange(0, len(bout) * 10, 10)
+        temp_bout = bout
+        #plt.figure()
+        #plt.xlabel('minutes since sleep onset')
+        #plt.ylabel('inactivity')
+        #plt.title(f'LIDS transformed data for bout with LIDS period = {lids_period}')
+        #plt.plot(x_axis_minutes, temp_bout)
+        #plt.show()
+
+
+
+    (r, p) = lids_obj.lids_pearson_r(bout)
+
+    MRI = lids_obj.lids_mri(bout)
+
+    (onset_phase, offset_phase) = lids_obj.lids_phases(bout)
+
+    # create a dataframe for all bouts with LIDS period, r, p, MRI, onset phase, and offset phase as columns
+    return (lids_period, r, p, MRI, onset_phase, offset_phase)
+
+
 
 def normalize_to_period(activity, period):
     """
@@ -484,16 +514,53 @@ def mean_of_bouts_normalized(lids_obj, bouts):
     # extract the activity data from the bouts
     activity_data = []
     periods = []
+
+    # init empty dataframe for all bouts with LIDS period, r, p, MRI, onset phase, and offset phase as columns.
+    bout_info_df = pd.DataFrame(columns=['LIDS period', 'r', 'p', 'MRI', 'onset phase', 'offset phase'])
+
     for i in range(len(bouts)):  # iterate through the bouts
 
-        activity_data.append(extract_activity_data(bouts[i]))  # append the activity data from each bout
-        periods.append(cosine_fit(lids_obj, bouts[i]))
+        (lids_period, r, p, MRI, onset_phase, offset_phase) = cosine_fit(lids_obj, bouts[i])
 
+        # append a row to the dictionary for the bout in question
+        row_data = {
+            'LIDS period': lids_period,
+            'r': r,
+            'p': p,
+            'MRI': MRI,
+            'onset phase': onset_phase,
+            'offset phase': offset_phase
+        }
+        bout_info_df = bout_info_df.append(row_data, ignore_index=True)
+
+        if p < 0.05 and str(lids_period) != '17.5': # comment out "str(lids_period) != '175.0'" for all bouts.
+            periods.append(lids_period)
+            activity_data.append(extract_activity_data(bouts[i]))  # append the activity data from each bout
+
+
+    # export bout info df to csv:
+    filepath = '/Users/awashburn/Library/CloudStorage/OneDrive-BowdoinCollege/Documents/' \
+                 'Mormino-Lab-Internship/Python-Projects/Actigraphy-Testing/timeSeries-actigraphy-csv-files/bout_summary_metrics_csv/'
+    #bout_info_df.to_csv(filepath + 'bout_summary_statistics.csv')
+
+    # normalize the bouts
+    print('length activity data: ', len(activity_data))
+    for val in activity_data:
+        print('activity data val: ', val)
+    print('length periods: ', len(periods))
+    for val in periods:
+        print('period val: ', val)
     normalized_bouts_list= []
     for i in range(len(activity_data)):
         normalized_bouts_list.append(normalize_to_period(activity_data[i], periods[i]))
 
     normalized_bouts_array = np.array(normalized_bouts_list)
+
+    #plt.figure()
+    #plt.xlabel('10 min intervals')
+    #plt.ylabel('frequency')
+    #plt.hist(periods)
+    #plt.show()
 
     # define a number of bins
     N_BINS = 50 # CHANGE THIS BACK to 50 - to 1000 for bins = 30 sec if applicable
@@ -521,6 +588,7 @@ def file_data_plot(file_mean, filename):
     plt.ylabel('inactivity')
     # set title
     plt.title(f'file {filename} mean')
+    print('about to plot (d)')
     plt.plot(file_mean)
 
 def resample_bouts(sleep_bouts):
@@ -574,9 +642,10 @@ def process_normalized(filenames):
 
     #age_interval_index = int(label.split('-')[0].split()[-1])  # Extract age interval from label
     # Ensure that the x-axis ticks show integers (0, 1, 2, 3, 4, ...)
-    num_ticks = 6  # You can adjust the number of ticks as needed
+    num_ticks = 5  # You can adjust the number of ticks as needed
     plt.xticks(np.linspace(0, MAX_PERIODS, num_ticks), np.arange(num_ticks))
 
+    print('about to plot (e)')
     plt.plot(x_smooth, file_mean_smooth)
 
 def process_normalized_with_confidence_intervals(filenames, label, colors):
@@ -605,6 +674,8 @@ def process_normalized_with_confidence_intervals(filenames, label, colors):
         n_files += 1
 
     (activity_mean, confidence_intervals) = mean_of_bouts_normalized(lids_obj, all_bouts)
+    for val in activity_mean:
+        print('val from activity mean: ', val)
 
     # set x axis to show LIDS periods
     # shave activity mean to be of length 36, in order to be consistent with the len of bouts.
@@ -631,9 +702,13 @@ def process_normalized_with_confidence_intervals(filenames, label, colors):
 
     # CASE FOR NON-BINNED DATA.
     if colors == '' and label == '':
+        print('length file mean smooth: ', len(file_mean_smooth))
+        for val in file_mean_smooth:
+            print('val: ', val)
         plt.xlabel('period')
         plt.ylabel('inactivity')
         plt.title('Normalized Activity')
+
         plt.plot(x_smooth, file_mean_smooth)
         plt.fill_between(x_smooth, file_mean_smooth - confidence_intervals, file_mean_smooth + confidence_intervals,
                          alpha=0.2)
@@ -641,6 +716,7 @@ def process_normalized_with_confidence_intervals(filenames, label, colors):
     else:
         # CASE FOR BINNED DATA - setting up plot already done in helper methods.
         # Plot the line of best fit using the same color as the one passed as a parameter
+        print('about to plot (f)')
         plt.plot(x_smooth, line_of_best_fit, color=color, linestyle='dashed')
 
         plt.plot(x_smooth, file_mean_smooth, label=label, color=color)
@@ -848,36 +924,39 @@ directory = '/Users/awashburn/Library/CloudStorage/OneDrive-BowdoinCollege/Docum
 filenames = [filename for filename in os.listdir(directory) if filename.endswith('timeSeries.csv.gz')]      # CHANGE THIS BACK - to 'timeSeries.csv.gz'
 
 # 1) for mean, non-normalized plot
-#padded_bouts = set_up_plot(filenames)  # FUNCTION CALL FOR NON-NORMALIZED LIDS GRAPH
+#padded_bouts = set_up_plot(filenames[0:5]) # FUNCTION CALL FOR NON-NORMALIZED LIDS GRAPH
+#plt.show()
 
 # 2) outlier analysis
 #outlier_indices = box_plot_outliers(padded_bouts)
 #plot_outlier_bouts(outlier_indices, padded_bouts)
-
-# 3) for the normalized plot, all filenames
-#process_normalized_with_confidence_intervals(filenames[0:20], '', '')  # FUNCTION CALL FOR NORMALIZED LIDS GRAPH
 #plt.show()
 
+# 3) for the normalized plot, all filenames
+#process_normalized_with_confidence_intervals(filenames[0:5], '', '')  # FUNCTION CALL FOR NORMALIZED LIDS GRAPH
+process_normalized_with_confidence_intervals(filenames, '', '')
+plt.show()
+
 # define the dictionary, to look up age, sex, etiology information for each user
-age_sex_etiology_dict = sex_age_bins_LIDS.initialize_user_dictionary('AgeSexDx_n166_2023-07-13.csv')
+#age_sex_etiology_dict = sex_age_bins_LIDS.initialize_user_dictionary('AgeSexDx_n166_2023-07-13.csv')
 
 ### 4) create the normalized plot, BINNED BY SEX ###
-plt.figure()
-set_up_plot_sex_binned(filenames, age_sex_etiology_dict)
+#plt.figure()
+#set_up_plot_sex_binned(filenames, age_sex_etiology_dict)
 
 ### 5) create the normalized plot, BINNED BY AGE NORMALLY ###
-plt.figure()
-set_up_plot_age_binned_normal(filenames, age_sex_etiology_dict)
+#plt.figure()
+#set_up_plot_age_binned_normal(filenames, age_sex_etiology_dict)
 
 ### 6) create the normalized plot, BINNED BY AGE OVER UNDER 75 ###
-plt.figure()
-set_up_plot_age_binned_over_under_75(filenames, age_sex_etiology_dict)
+#plt.figure()
+#set_up_plot_age_binned_over_under_75(filenames, age_sex_etiology_dict)
 
 ### 7) create the normalized plot, BINNED BY ETIOLOGY ###
-plt.figure()
-set_up_plot_binned_etiology(filenames, age_sex_etiology_dict)
+#plt.figure()
+#set_up_plot_binned_etiology(filenames, age_sex_etiology_dict)
 
-plt.show()
+#plt.show()
 
 
 
