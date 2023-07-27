@@ -69,9 +69,10 @@ def reformat_date_european_to_american_objective(objective_sleep_df, filepath):
     :param objective_sleep_df: the objective sleep data frame
     :return:
     """
-    # Step 1: Use the str.replace() method to remove ".RData" from the "File Name" column
-    objective_sleep_df['filename'].str.replace(r'\.RData$', '', regex=True)
+    # Step 1: Use the str.replace() method to remove ".RData" from the "File Name" column. Reasign it to be in place.
+    objective_sleep_df['filename'] = objective_sleep_df['filename'].str.replace(r'\.RData$', '', regex=True)
 
+    # convert to date time
     objective_sleep_df['calendar_date'] = pd.to_datetime(objective_sleep_df['calendar_date'], format='%d/%m/%Y',
                                                          errors='coerce')
 
@@ -84,11 +85,26 @@ def reformat_date_european_to_american_objective(objective_sleep_df, filepath):
     #rename the 'calendar_date' column to 'Date'
     objective_sleep_df.rename(columns={"calendar_date": "Date", "filename": "File Name"}, inplace=True)
 
-
-
     # export
     objective_sleep_df.to_csv(filepath + 'part4_nightsummary_sleep_cleaned_fixed_date.csv', index=False)
     return objective_sleep_df
+
+def reformat_date_to_common_format(dataframe, date_column):
+    """
+    HELPER: Reformat the date column to a common format in the dataframe.
+    :param dataframe: The pandas DataFrame containing the date column.
+    :param date_column: The name of the date column to be reformatted.
+    :return: None
+    """
+
+    # Step 1: Convert the date_column to datetime with the format '%m/%d/%y' using coerce to handle invalid dates
+    dataframe.loc[:, date_column] = pd.to_datetime(dataframe[date_column], format='%m/%d/%y', errors='coerce')
+
+    # Step 2: Drop any NaT (Not a Time) values resulting from invalid date conversions
+    dataframe.dropna(subset=[date_column], inplace=True)
+
+    # Step 3: Convert the date_column to the desired format 'mm/dd/yy'
+    dataframe.loc[:, date_column] = dataframe[date_column].dt.strftime('%m/%d/%y')
 
 def merge_objective_subjective_files(subjective_sleep_df_all_fixed, objective_sleep_df_fixed):
     """
@@ -97,8 +113,49 @@ def merge_objective_subjective_files(subjective_sleep_df_all_fixed, objective_sl
     :param objective_sleep_df_fixed:
     :return:
     """
+
+    # reformat the date for subjective sleep df
+    subjective_sleep_df_all_fixed['Date'] = pd.to_datetime(subjective_sleep_df_all_fixed['Date'], format='%m/%d/%y',
+                                                         errors='coerce')
+
+    subjective_sleep_df_all_fixed['Date'] = subjective_sleep_df_all_fixed['Date'].dt.strftime('%m/%d/%y')
+
+
+    # merge the dfs
     merged_df = pd.merge(subjective_sleep_df_all_fixed, objective_sleep_df_fixed, on=['File Name', 'Date'], how='inner')
     merged_df.to_csv(filepath + 'objective_subjective_merged.csv', index=False)
+
+    return merged_df
+
+
+def plot_obj_vs_subjective_unbinned(merged_df, obj_x_value, subj_y_value):
+    """
+    Scatter objective sleep characteristic (x value) vs. subjective sleep characteristic (y value), unbinned.
+    :param merged_df:
+    :param x_value:
+    :param y_value:
+    :return:
+    """
+    # Create the scatter plot for all subjects' data
+    plt.figure()  # Create a new figure
+
+    # for index, row in merged_df.iterrows():
+    #     x_value = row[obj_x_value]
+    #     y_value= row[subj_y_value]
+    #
+    #     # continue scattering points to build up a plot
+    #     plt.scatter(x_value, y_value, label=f"Subject {index}")
+
+    # Group by 'Deep Sleep' and calculate the mean of 'WASO' for each group
+    mean_objective_by_subjective = merged_df.groupby(subj_y_value)[obj_x_value].mean() # returns a mean value for WASO for each unique value for Deep Sleep.
+
+    # Plot the mean objective values for each subjective value
+    mean_objective_by_subjective.plot(kind='bar')
+
+    plt.xlabel(obj_x_value)
+    plt.ylabel(subj_y_value)
+    plt.title(f"Objective {obj_x_value} vs. Subjective {subj_y_value}")
+
 
 
 '''FUNCTION CALLS'''
@@ -116,9 +173,21 @@ diagnosis_data_filename = 'AgeSexDx_n166_2023-07-13.csv'
 filepath = '/Users/awashburn/Library/CloudStorage/OneDrive-BowdoinCollege/Documents/' \
                  'Mormino-Lab-Internship/Python-Projects/Actigraphy-Testing/day-to-day-modeling-files/'
 
-subjective_sleep_df_all_fixed = subjective_long_add_filename(subjective_sleep_df_all, filepath)
-objective_sleep_df_fixed = reformat_date_european_to_american_objective(objective_sleep_df, filepath)
-merge_objective_subjective_files(subjective_sleep_df_all_fixed, objective_sleep_df_fixed)
+##### CREATING THE MERGED DF WITH OBJECTIVE AND SUBJECTIVE DATA #####
+#subjective_sleep_df_all_fixed = subjective_long_add_filename(subjective_sleep_df_all, filepath)
+#objective_sleep_df_fixed = reformat_date_european_to_american_objective(objective_sleep_df, filepath)
+#merged_df = merge_objective_subjective_files(subjective_sleep_df_all_fixed, objective_sleep_df_fixed)
+
+##### OBJECTIVE VS SUBJECTIVE PLOTS #####
+# read in the merged data frame
+merged_df = pd.read_csv(filepath + 'objective_subjective_merged.csv')
+
+# plot
+obj_x_value = 'WASO'
+subj_y_value = 'Deep Sleep'
+plot_obj_vs_subjective_unbinned(merged_df, obj_x_value, subj_y_value)
+plt.show()
+
 
 
 
