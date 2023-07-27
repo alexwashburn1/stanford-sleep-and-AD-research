@@ -128,7 +128,7 @@ def merge_objective_subjective_files(subjective_sleep_df_all_fixed, objective_sl
     return merged_df
 
 
-def plot_obj_vs_subjective_unbinned(merged_df, obj_x_value, subj_y_value):
+def plot_obj_vs_subjective_unbinned(merged_df, subj_x_value, obj_y_value, color):
     """
     Scatter objective sleep characteristic (x value) vs. subjective sleep characteristic (y value), unbinned.
     :param merged_df:
@@ -139,22 +139,15 @@ def plot_obj_vs_subjective_unbinned(merged_df, obj_x_value, subj_y_value):
     # Create the scatter plot for all subjects' data
     plt.figure()  # Create a new figure
 
-    # for index, row in merged_df.iterrows():
-    #     x_value = row[obj_x_value]
-    #     y_value= row[subj_y_value]
-    #
-    #     # continue scattering points to build up a plot
-    #     plt.scatter(x_value, y_value, label=f"Subject {index}")
-
-    # Group by 'Deep Sleep' and calculate the mean of 'WASO' for each group
-    mean_objective_by_subjective = merged_df.groupby(subj_y_value)[obj_x_value].mean() # returns a mean value for WASO for each unique value for Deep Sleep.
+    # Group by 'Deep Sleep' and calculate the mean of 'WASO' for each group. if any of the values are na, drop the row.
+    mean_objective_by_subjective = merged_df.groupby(subj_x_value)[obj_y_value].mean().dropna() # returns a mean value for WASO for each unique value for Deep Sleep.
 
     # Plot the mean objective values for each subjective value
-    mean_objective_by_subjective.plot(kind='bar')
+    mean_objective_by_subjective.plot(kind='bar', color=color)
 
-    plt.xlabel(obj_x_value)
-    plt.ylabel(subj_y_value)
-    plt.title(f"Objective {obj_x_value} vs. Subjective {subj_y_value}")
+    plt.xlabel(subj_x_value)
+    plt.ylabel(obj_y_value)
+    plt.title(f"Objective {obj_y_value} vs. Subjective {subj_x_value}")
 
 
 
@@ -183,9 +176,12 @@ filepath = '/Users/awashburn/Library/CloudStorage/OneDrive-BowdoinCollege/Docume
 merged_df = pd.read_csv(filepath + 'objective_subjective_merged.csv')
 
 # plot
-obj_x_value = 'WASO'
-subj_y_value = 'Deep Sleep'
-plot_obj_vs_subjective_unbinned(merged_df, obj_x_value, subj_y_value)
+subj_characteristics = ['Deep Sleep', 'Overall quality', 'Well-rested', 'Mentally Alert']
+color = 'seagreen'
+obj_y_value = 'SleepRegularityIndex' 
+for subj_x_value in subj_characteristics:
+    plot_obj_vs_subjective_unbinned(merged_df, subj_x_value, obj_y_value, color)
+
 plt.show()
 
 
