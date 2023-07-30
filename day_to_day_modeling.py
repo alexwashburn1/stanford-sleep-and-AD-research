@@ -4,6 +4,7 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import math
+import seaborn as sns
 
 def import_data(subjective_data_filename_all, subjective_data_filename_1, subjective_data_filename_2,
                 objective_data_filename, diagnosis_data_filename):
@@ -123,31 +124,71 @@ def merge_objective_subjective_files(subjective_sleep_df_all_fixed, objective_sl
 
     # merge the dfs
     merged_df = pd.merge(subjective_sleep_df_all_fixed, objective_sleep_df_fixed, on=['File Name', 'Date'], how='inner')
+
+    # add a sleep efficiency column
+    print('adding column ')
+    merged_df['sleep_efficiency'] = merged_df['SleepDurationInSpt'] / merged_df['SptDuration']
+    print('added column')
+
     merged_df.to_csv(filepath + 'objective_subjective_merged.csv', index=False)
 
     return merged_df
 
 
-def plot_obj_vs_subjective_unbinned(merged_df, subj_x_value, obj_y_value, color):
+def plot_obj_vs_subjective_unbinned(merged_df, subj_x_value, obj_y_value, color, obj_y_axis_name):
     """
-    Scatter objective sleep characteristic (x value) vs. subjective sleep characteristic (y value), unbinned.
+    Violin plot of objective sleep characteristic (x value) vs. subjective sleep characteristic (y value), unbinned.
     :param merged_df:
     :param x_value:
     :param y_value:
     :return:
     """
-    # Create the scatter plot for all subjects' data
-    plt.figure()  # Create a new figure
 
-    # Group by 'Deep Sleep' and calculate the mean of 'WASO' for each group. if any of the values are na, drop the row.
-    mean_objective_by_subjective = merged_df.groupby(subj_x_value)[obj_y_value].mean().dropna() # returns a mean value for WASO for each unique value for Deep Sleep.
+    # Create violin plots using Seaborn
+    plt.figure(figsize=(10, 6))  # Adjust the figure size if needed
+    sns.violinplot(x=merged_df[subj_x_value], y=merged_df[obj_y_value], color=color)
 
-    # Plot the mean objective values for each subjective value
-    mean_objective_by_subjective.plot(kind='bar', color=color)
+    # calculate medians
+    medians = merged_df.groupby(subj_x_value)[obj_y_value].median()
+
+    # Plot the white dots for the median values
+    sns.stripplot(x=medians.index, y=medians.values, color='white', size=7, linewidth=2)
+
+    # Add a line of best fit for the median values
+    x_values = np.arange(1, len(medians)+1)  # Generate x values for the plot - 1 to 5 (centered with 1-5 subj. scores)
+    coefficients = np.polyfit(x_values, medians.values, 1)  # Fit a first-degree polynomial (linear fit)
+
+    # Calculate the y values for the line of best fit
+    y_values = np.polyval(coefficients, x_values)
+
+    # Find the x-axis position for the first and last violin plots
+    x_first_violin = x_values[0] - 1.15
+    x_last_violin = x_values[-1] - 0.75
+
+    # Draw the line of best fit using plt.plot()
+    plt.plot([x_first_violin, x_last_violin], [y_values[0], y_values[-1]], color='darkgrey', linestyle='dashed',
+             linewidth=1.5)
+
+    # Set the y-axis limits to include the range of the line
+    plt.ylim(min(merged_df[obj_y_value] - 0.99), max(merged_df[obj_y_value] + 1.5))
+    plt.xlim(-0.5, 4.6)
+
+    # add slope, R^2 to the plot
+    r_squared = np.corrcoef(x_values, medians.values)[0, 1] ** 2 # squaring the correlation of x_values and median values (R^2)
+    plt.text(4.5, max(merged_df[obj_y_value] + 1) , f"R²: {r_squared:.2f}", fontsize=9, ha='right')
 
     plt.xlabel(subj_x_value)
-    plt.ylabel(obj_y_value)
-    plt.title(f"Objective {obj_y_value} vs. Subjective {subj_x_value}")
+    plt.ylabel(obj_y_axis_name)
+    plt.show()
+
+    #### RELEVANT THRESHOLDS ####
+    # 1) Sleep Efficiency:
+    #  x_first_violin = x_values[0] - 1.15
+    #  x_last_violin = x_values[-1] - 0.75
+    #  plt.ylim(min(merged_df[obj_y_value] - 0.13), max(merged_df[obj_y_value] + 0.15))
+    #  plt.xlim(-0.5, 4.6)
+    #  plt.text(4.5, max(y_values) + 0.2, f"R²: {r_squared:.2f}", fontsize=9, ha='right')
+
 
 
 
@@ -177,10 +218,11 @@ merged_df = pd.read_csv(filepath + 'objective_subjective_merged.csv')
 
 # plot
 subj_characteristics = ['Deep Sleep', 'Overall quality', 'Well-rested', 'Mentally Alert']
-color = 'seagreen'
-obj_y_value = 'SleepRegularityIndex' 
+color = 'darkgoldenrod'
+obj_y_value = 'WASO'
+obj_y_axis_name = 'WASO'
 for subj_x_value in subj_characteristics:
-    plot_obj_vs_subjective_unbinned(merged_df, subj_x_value, obj_y_value, color)
+    plot_obj_vs_subjective_unbinned(merged_df, subj_x_value, obj_y_value, color, obj_y_axis_name)
 
 plt.show()
 

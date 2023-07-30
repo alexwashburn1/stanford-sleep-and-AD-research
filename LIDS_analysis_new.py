@@ -215,7 +215,7 @@ def set_up_plot(filenames):
 
             (lids_period, r, p, MRI, onset_phase, offset_phase) = cosine_fit(lids_obj, bout_with_filename[0])
 
-            if p < 0.05:
+            if p < 0.05 and str(lids_period) != '17.5':
                 all_bouts_all_files.append(bout_with_filename)
             else:
                 print('i: ', i)
@@ -335,7 +335,6 @@ def box_plot_outliers(padded_bouts):
     print('bout right after graph # 1 bout: ', padded_bouts[outlier_index_1 + 1][0])
     print('bout from graph #2: ', padded_bouts[outlier_index_2][0])
     print('bout from graph #3: ', padded_bouts[outlier_index_3][0])
-
 
     # Create the box plot
     plt.violinplot(first_five_values)
@@ -533,7 +532,8 @@ def mean_of_bouts_normalized(lids_obj, bouts):
         }
         bout_info_df = bout_info_df.append(row_data, ignore_index=True)
 
-        if p < 0.05 and str(lids_period) != '17.5': # comment out "str(lids_period) != '175.0'" for all bouts.
+
+        if p < 0.05 and str(lids_period) != '17.5':
             periods.append(lids_period)
             activity_data.append(extract_activity_data(bouts[i]))  # append the activity data from each bout
 
@@ -544,12 +544,7 @@ def mean_of_bouts_normalized(lids_obj, bouts):
     #bout_info_df.to_csv(filepath + 'bout_summary_statistics.csv')
 
     # normalize the bouts
-    print('length activity data: ', len(activity_data))
-    for val in activity_data:
-        print('activity data val: ', val)
-    print('length periods: ', len(periods))
-    for val in periods:
-        print('period val: ', val)
+
     normalized_bouts_list= []
     for i in range(len(activity_data)):
         normalized_bouts_list.append(normalize_to_period(activity_data[i], periods[i]))
@@ -578,7 +573,7 @@ def mean_of_bouts_normalized(lids_obj, bouts):
         y_averages.append(y_average_in_bin)
         confidence_intervals.append(confidence_interval)
         x += x_increment
-    return (y_averages, confidence_intervals)
+    return (y_averages, confidence_intervals, len(periods))
 
 def file_data_plot(file_mean, filename):
     plt.figure()
@@ -629,7 +624,7 @@ def process_normalized(filenames):
         total_bouts += n_bouts_in_file
         n_files += 1
 
-    (activity_mean, confidence_intervals) = mean_of_bouts_normalized(lids_obj, all_bouts)
+    (activity_mean, confidence_intervals, num_bouts) = mean_of_bouts_normalized(lids_obj, all_bouts)
     print('length activity_mean: ', len(activity_mean))
 
     # set x axis to show LIDS periods
@@ -646,6 +641,8 @@ def process_normalized(filenames):
     plt.xticks(np.linspace(0, MAX_PERIODS, num_ticks), np.arange(num_ticks))
 
     print('about to plot (e)')
+    plt.xlabel('period')
+    plt.ylabel(f'Normalized Activity from {num_bouts} bouts')
     plt.plot(x_smooth, file_mean_smooth)
 
 def process_normalized_with_confidence_intervals(filenames, label, colors):
@@ -673,7 +670,7 @@ def process_normalized_with_confidence_intervals(filenames, label, colors):
         total_bouts += n_bouts_in_file
         n_files += 1
 
-    (activity_mean, confidence_intervals) = mean_of_bouts_normalized(lids_obj, all_bouts)
+    (activity_mean, confidence_intervals, num_bouts) = mean_of_bouts_normalized(lids_obj, all_bouts)
     for val in activity_mean:
         print('val from activity mean: ', val)
 
@@ -707,7 +704,7 @@ def process_normalized_with_confidence_intervals(filenames, label, colors):
             print('val: ', val)
         plt.xlabel('period')
         plt.ylabel('inactivity')
-        plt.title('Normalized Activity')
+        plt.title(f'Normalized Activity from {num_bouts} bouts')
 
         plt.plot(x_smooth, file_mean_smooth)
         plt.fill_between(x_smooth, file_mean_smooth - confidence_intervals, file_mean_smooth + confidence_intervals,
@@ -924,8 +921,8 @@ directory = '/Users/awashburn/Library/CloudStorage/OneDrive-BowdoinCollege/Docum
 filenames = [filename for filename in os.listdir(directory) if filename.endswith('timeSeries.csv.gz')]      # CHANGE THIS BACK - to 'timeSeries.csv.gz'
 
 # 1) for mean, non-normalized plot
-#padded_bouts = set_up_plot(filenames[0:5]) # FUNCTION CALL FOR NON-NORMALIZED LIDS GRAPH
-#plt.show()
+padded_bouts = set_up_plot(filenames) # FUNCTION CALL FOR NON-NORMALIZED LIDS GRAPH
+plt.show()
 
 # 2) outlier analysis
 #outlier_indices = box_plot_outliers(padded_bouts)
@@ -933,9 +930,8 @@ filenames = [filename for filename in os.listdir(directory) if filename.endswith
 #plt.show()
 
 # 3) for the normalized plot, all filenames
-#process_normalized_with_confidence_intervals(filenames[0:5], '', '')  # FUNCTION CALL FOR NORMALIZED LIDS GRAPH
-process_normalized_with_confidence_intervals(filenames, '', '')
-plt.show()
+#process_normalized_with_confidence_intervals(filenames, '', '')  # FUNCTION CALL FOR NORMALIZED LIDS GRAPH
+#plt.show()
 
 # define the dictionary, to look up age, sex, etiology information for each user
 #age_sex_etiology_dict = sex_age_bins_LIDS.initialize_user_dictionary('AgeSexDx_n166_2023-07-13.csv')
