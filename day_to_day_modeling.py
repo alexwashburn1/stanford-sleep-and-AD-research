@@ -130,6 +130,22 @@ def merge_objective_subjective_files(subjective_sleep_df_all_fixed, objective_sl
     merged_df['sleep_efficiency'] = merged_df['SleepDurationInSpt'] / merged_df['SptDuration']
     print('added column')
 
+    #merged_df.to_csv(filepath + 'objective_subjective_merged.csv', index=False)
+
+    return merged_df
+
+def merged_objsubj_agesexetiology(merged_df, age_sex_etiology_df):
+    """
+    merges the obj/subj df and the df containing info about age, sex, and etiology, by filename.
+    :param merged_df:
+    :param age_sex_etiology_df:
+    :return:
+    """
+
+    # Perform the merge
+    merged_df = pd.merge(merged_df, age_sex_etiology_df, left_on='File Name', right_on='Actigraphy_File', how='left')
+
+    # write it to csv
     merged_df.to_csv(filepath + 'objective_subjective_merged.csv', index=False)
 
     return merged_df
@@ -147,6 +163,7 @@ def plot_obj_vs_subjective_unbinned(merged_df, subj_x_value, obj_y_value, color,
     # Create violin plots using Seaborn
     plt.figure(figsize=(10, 6))  # Adjust the figure size if needed
     sns.violinplot(x=merged_df[subj_x_value], y=merged_df[obj_y_value], color=color)
+
 
     # calculate medians
     medians = merged_df.groupby(subj_x_value)[obj_y_value].median()
@@ -208,23 +225,24 @@ filepath = '/Users/awashburn/Library/CloudStorage/OneDrive-BowdoinCollege/Docume
                  'Mormino-Lab-Internship/Python-Projects/Actigraphy-Testing/day-to-day-modeling-files/'
 
 ##### CREATING THE MERGED DF WITH OBJECTIVE AND SUBJECTIVE DATA #####
-#subjective_sleep_df_all_fixed = subjective_long_add_filename(subjective_sleep_df_all, filepath)
-#objective_sleep_df_fixed = reformat_date_european_to_american_objective(objective_sleep_df, filepath)
-#merged_df = merge_objective_subjective_files(subjective_sleep_df_all_fixed, objective_sleep_df_fixed)
+subjective_sleep_df_all_fixed = subjective_long_add_filename(subjective_sleep_df_all, filepath)
+objective_sleep_df_fixed = reformat_date_european_to_american_objective(objective_sleep_df, filepath)
+merged_df = merge_objective_subjective_files(subjective_sleep_df_all_fixed, objective_sleep_df_fixed)
+merged_df_final = merged_objsubj_agesexetiology(merged_df, diagnosis_data_df)
 
 ##### OBJECTIVE VS SUBJECTIVE PLOTS #####
 # read in the merged data frame
-merged_df = pd.read_csv(filepath + 'objective_subjective_merged.csv')
+#merged_df = pd.read_csv(filepath + 'objective_subjective_merged.csv')
 
 # plot
-subj_characteristics = ['Deep Sleep', 'Overall quality', 'Well-rested', 'Mentally Alert']
-color = 'darkgoldenrod'
-obj_y_value = 'WASO'
-obj_y_axis_name = 'WASO'
-for subj_x_value in subj_characteristics:
-    plot_obj_vs_subjective_unbinned(merged_df, subj_x_value, obj_y_value, color, obj_y_axis_name)
+#subj_characteristics = ['Deep Sleep', 'Overall quality', 'Well-rested', 'Mentally Alert']
+#color = 'darkgoldenrod'
+#obj_y_value = 'WASO'
+#obj_y_axis_name = 'WASO'
+#for subj_x_value in subj_characteristics:
+#    plot_obj_vs_subjective_unbinned(merged_df, subj_x_value, obj_y_value, color, obj_y_axis_name)
 
-plt.show()
+#plt.show()
 
 
 

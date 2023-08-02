@@ -1,6 +1,7 @@
 '''IMPORTS'''
 import sys
 import pyActigraphy
+from matplotlib import gridspec
 from pyActigraphy.analysis import SSA
 import numpy as np
 import pandas as pd
@@ -162,7 +163,7 @@ def find_bouts(lids_obj, raw):
     #TODO - COMMENT OUT the code below if you don't want to delete the first 4 epochs
     all_bouts_first_4_epochs_removed = []
     for bout in bouts_transformed:
-        new_bout = bout[4:] # change to 4 if desired to filter out first 4 epochs.
+        new_bout = bout[0:] # change to 4 if desired to filter out first 4 epochs.
         all_bouts_first_4_epochs_removed.append(new_bout)
 
     return all_bouts_first_4_epochs_removed
@@ -215,7 +216,7 @@ def set_up_plot(filenames):
 
             (lids_period, r, p, MRI, onset_phase, offset_phase) = cosine_fit(lids_obj, bout_with_filename[0])
 
-            if p < 0.05 and str(lids_period) != '17.5':
+            if p < 0.05: # and str(lids_period) != '17.5': (can comment back in)
                 all_bouts_all_files.append(bout_with_filename)
             else:
                 print('i: ', i)
@@ -453,7 +454,7 @@ def cosine_fit(lids_obj, bout):
 
 
 
-def normalize_to_period(activity, period):
+def normalize_to_period(activity, period, onset_phase):
     """
     Normalize the activity data to the period
     :param activity: list of activity data
@@ -461,14 +462,20 @@ def normalize_to_period(activity, period):
     :return: normalized activity data
     """
     normalized = []
+    onset_phase = onset_phase / 360 # convert from degrees to units of period. Onset phase is the "black dot" on Figure 5c Winnebeck 2018.
     for i in range(len(activity)):
-        normalized.append((i/period, activity[i]))
+        normalized_x = i / period
+        x_shifted = normalized_x - onset_phase
+        if x_shifted >= 0:
+            #it will only be >0 past the black dot (Fig 5c), doing the "cutting" as referenced in the methods of Winnebeck 2018.
+            normalized.append((x_shifted, activity[i]))
 
-    n2 = []
+    # convert the list to a numpy array
+    normalized2 = []
     for i in range(len(normalized)):
-        n2.append(np.array(normalized[i]))
-    n3 = np.array(n2)
-    return n3
+        normalized2.append(np.array(normalized[i])) # make an array of the tuples
+    normalized3 = np.array(normalized2)
+    return normalized3
 
 def find_max_x_value(bouts):
     max_x_value = 0
@@ -503,6 +510,54 @@ def find_y_average_in_bin(normalized_bouts_array, bin_x_start, bin_x_end):
     confidence_interval = 1.96 * sem(bout_values)  # 95% confidence interval, assuming a normal distribution
     return (average, confidence_interval)
 
+def hist_of_periods(periods):
+    #### HISTOGRAM OF PERIODS ####
+    # get the value of periods in minutes for the histogram of period distribution
+    periods_for_hist = [period * 10 for period in periods]
+
+    # Calculate the minimum and maximum values and cast them to integers
+    min_value = int(min(periods_for_hist))
+    max_value = int(max(periods_for_hist))
+
+    # Set the bin edges using a range with intervals of 10
+    bins = range(min_value, max_value + 10, 10)
+
+    # Create a 2x1 grid of subplots with shared x-axis
+    fig = plt.figure(figsize=(10, 5))
+    gs = gridspec.GridSpec(2, 1, height_ratios=[3, 1], hspace=0.05)
+    ax1 = plt.subplot(gs[0])
+    ax2 = plt.subplot(gs[1], sharex=ax1)
+
+    # Plot the histogram with clearly outlined bins and y-axis labels
+    ax1.set_ylabel('Counts')
+    ax1.hist(periods_for_hist, bins=bins, edgecolor='black')
+
+    # Customize the box plot appearance
+    box_plot = ax2.boxplot(periods_for_hist, vert=False, positions=[min(periods_for_hist) + 5], widths=6,
+                           patch_artist=True)
+    for box in box_plot['boxes']:
+        box.set_facecolor('white')  # Set box color to non-transparent white
+
+    ax2.yaxis.set_visible(False)
+    ax2.set_xticks([])  # Hide x-axis labels for the box plot
+
+    # Set the same x-axis limits for both axes to ensure alignment
+    ax1.set_xlim(ax1.get_xlim())  # Copy x-axis limits from the main histogram
+    ax2.set_xlim(ax1.get_xlim())  # Set the same limits for the box plot
+
+    plt.xticks(bins)  # Set x-axis ticks for the histogram
+
+    plt.xlabel('Period (min)')
+
+    # Add a text box in the top-right corner displaying the number of periods
+    n_periods = len(periods_for_hist)
+    text_box = f'n = {n_periods} bouts'
+    ax1.text(0.03, 0.95, text_box, transform=ax1.transAxes, ha='left', va='top',
+             bbox=dict(facecolor='white', edgecolor='black'))
+
+    plt.show()
+
+
 def mean_of_bouts_normalized(lids_obj, bouts):
     """
     Find the mean of the normalized bouts
@@ -513,6 +568,7 @@ def mean_of_bouts_normalized(lids_obj, bouts):
     # extract the activity data from the bouts
     activity_data = []
     periods = []
+    onset_phases = []
 
     # init empty dataframe for all bouts with LIDS period, r, p, MRI, onset phase, and offset phase as columns.
     bout_info_df = pd.DataFrame(columns=['LIDS period', 'r', 'p', 'MRI', 'onset phase', 'offset phase'])
@@ -533,8 +589,9 @@ def mean_of_bouts_normalized(lids_obj, bouts):
         bout_info_df = bout_info_df.append(row_data, ignore_index=True)
 
 
-        if p < 0.05 and str(lids_period) != '17.5':
+        if p < 0.05:
             periods.append(lids_period)
+            onset_phases.append(onset_phase)
             activity_data.append(extract_activity_data(bouts[i]))  # append the activity data from each bout
 
 
@@ -547,15 +604,12 @@ def mean_of_bouts_normalized(lids_obj, bouts):
 
     normalized_bouts_list= []
     for i in range(len(activity_data)):
-        normalized_bouts_list.append(normalize_to_period(activity_data[i], periods[i]))
+        normalized_bouts_list.append(normalize_to_period(activity_data[i], periods[i], onset_phases[i]))
 
     normalized_bouts_array = np.array(normalized_bouts_list)
 
-    #plt.figure()
-    #plt.xlabel('10 min intervals')
-    #plt.ylabel('frequency')
-    #plt.hist(periods)
-    #plt.show()
+    # plot a histogram of the periods
+    hist_of_periods(periods)
 
     # define a number of bins
     N_BINS = 50 # CHANGE THIS BACK to 50 - to 1000 for bins = 30 sec if applicable
@@ -637,7 +691,7 @@ def process_normalized(filenames):
 
     #age_interval_index = int(label.split('-')[0].split()[-1])  # Extract age interval from label
     # Ensure that the x-axis ticks show integers (0, 1, 2, 3, 4, ...)
-    num_ticks = 5  # You can adjust the number of ticks as needed
+    num_ticks = MAX_PERIODS + 1 # You can adjust the number of ticks as needed
     plt.xticks(np.linspace(0, MAX_PERIODS, num_ticks), np.arange(num_ticks))
 
     print('about to plot (e)')
@@ -921,8 +975,8 @@ directory = '/Users/awashburn/Library/CloudStorage/OneDrive-BowdoinCollege/Docum
 filenames = [filename for filename in os.listdir(directory) if filename.endswith('timeSeries.csv.gz')]      # CHANGE THIS BACK - to 'timeSeries.csv.gz'
 
 # 1) for mean, non-normalized plot
-padded_bouts = set_up_plot(filenames) # FUNCTION CALL FOR NON-NORMALIZED LIDS GRAPH
-plt.show()
+#padded_bouts = set_up_plot(filenames) # FUNCTION CALL FOR NON-NORMALIZED LIDS GRAPH
+#plt.show()
 
 # 2) outlier analysis
 #outlier_indices = box_plot_outliers(padded_bouts)
@@ -930,11 +984,11 @@ plt.show()
 #plt.show()
 
 # 3) for the normalized plot, all filenames
-#process_normalized_with_confidence_intervals(filenames, '', '')  # FUNCTION CALL FOR NORMALIZED LIDS GRAPH
-#plt.show()
+process_normalized_with_confidence_intervals(filenames, '', '')  # FUNCTION CALL FOR NORMALIZED LIDS GRAPH
+plt.show()
 
 # define the dictionary, to look up age, sex, etiology information for each user
-#age_sex_etiology_dict = sex_age_bins_LIDS.initialize_user_dictionary('AgeSexDx_n166_2023-07-13.csv')
+age_sex_etiology_dict = sex_age_bins_LIDS.initialize_user_dictionary('AgeSexDx_n166_2023-07-13.csv')
 
 ### 4) create the normalized plot, BINNED BY SEX ###
 #plt.figure()
