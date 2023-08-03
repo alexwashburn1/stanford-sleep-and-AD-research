@@ -234,12 +234,46 @@ merged_df_final = merged_objsubj_agesexetiology(merged_df, diagnosis_data_df)
 filtered_df = merged_df_final[merged_df_final['Etiology'] != 'Other']
 
 # Group the DataFrame by 'Etiology' and calculate the mean of the 'Well rested' column for each group
-mean_well_rested_by_etiology = filtered_df.groupby('Etiology')['sleep_efficiency'].mean()
-print(mean_well_rested_by_etiology)
+#mean_well_rested_by_etiology = filtered_df.groupby('Etiology')['sleep_efficiency'].mean()
+#print(mean_well_rested_by_etiology)
 
-# get the etiology counts
-etiology_counts = filtered_df['Etiology'].value_counts()
-print(etiology_counts)
+# get the etiology night counts
+#etiology_counts = filtered_df['Etiology'].value_counts()
+#print(etiology_counts)
+
+# get the subject counts.
+grouped_counts = merged_df_final.groupby('Etiology')['File Name'].nunique()
+print(grouped_counts)
+
+# get the male vs female counts
+ad_df = filtered_df[filtered_df['Etiology'] == 'AD']
+hc_df = filtered_df[filtered_df['Etiology'] == 'HC']
+lb_df = filtered_df[filtered_df['Etiology'] == 'LB']
+
+# Filter to get only the male and female
+male_female_dfs = []
+
+ad_df_male = ad_df[ad_df['Sex'] == 'Male']
+male_female_dfs.append(ad_df_male)
+ad_df_female = ad_df[ad_df['Sex'] == 'Female']
+male_female_dfs.append(ad_df_female)
+
+hc_df_male = hc_df[hc_df['Sex'] == 'Male']
+male_female_dfs.append(hc_df_male)
+hc_df_female = hc_df[hc_df['Sex'] == 'Female']
+male_female_dfs.append(hc_df_female)
+
+lb_df_male = lb_df[lb_df['Sex'] == 'Male']
+male_female_dfs.append(lb_df_male)
+lb_df_female = lb_df[lb_df['Sex'] == 'Female']
+male_female_dfs.append(lb_df_female)
+
+for df in male_female_dfs:
+    print(df['File Name'].nunique())
+
+
+
+
 
 
 ##### OBJECTIVE VS SUBJECTIVE PLOTS #####
