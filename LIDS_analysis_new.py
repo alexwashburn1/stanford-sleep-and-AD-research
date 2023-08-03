@@ -437,7 +437,7 @@ def cosine_fit(lids_obj, bout):
         #plt.figure()
         #plt.xlabel('minutes since sleep onset')
         #plt.ylabel('inactivity')
-        #plt.title(f'LIDS transformed data for bout with LIDS period = {lids_period}')
+        #plt.title(f'n=1 sleep bout')
         #plt.plot(x_axis_minutes, temp_bout)
         #plt.show()
 
@@ -555,7 +555,7 @@ def hist_of_periods(periods):
     ax1.text(0.03, 0.95, text_box, transform=ax1.transAxes, ha='left', va='top',
              bbox=dict(facecolor='white', edgecolor='black'))
 
-    plt.show()
+    #plt.show()
 
 
 def mean_of_bouts_normalized(lids_obj, bouts):
@@ -609,7 +609,7 @@ def mean_of_bouts_normalized(lids_obj, bouts):
     normalized_bouts_array = np.array(normalized_bouts_list)
 
     # plot a histogram of the periods
-    hist_of_periods(periods)
+    #hist_of_periods(periods)
 
     # define a number of bins
     N_BINS = 50 # CHANGE THIS BACK to 50 - to 1000 for bins = 30 sec if applicable
@@ -695,7 +695,7 @@ def process_normalized(filenames):
     plt.xticks(np.linspace(0, MAX_PERIODS, num_ticks), np.arange(num_ticks))
 
     print('about to plot (e)')
-    plt.xlabel('period')
+    plt.xlabel('LIDS cycle')
     plt.ylabel(f'Normalized Activity from {num_bouts} bouts')
     plt.plot(x_smooth, file_mean_smooth)
 
@@ -756,8 +756,8 @@ def process_normalized_with_confidence_intervals(filenames, label, colors):
         print('length file mean smooth: ', len(file_mean_smooth))
         for val in file_mean_smooth:
             print('val: ', val)
-        plt.xlabel('period')
-        plt.ylabel('inactivity')
+        plt.xlabel('LIDS cycle')
+        plt.ylabel('Inactivity')
         plt.title(f'Normalized Activity from {num_bouts} bouts')
 
         plt.plot(x_smooth, file_mean_smooth)
@@ -886,8 +886,8 @@ def set_up_plot_sex_binned(filenames, age_sex_etiology_dict):
         'Female': (1, 0.5, 0.5) # Pink/orange
     }
     # Create the figure
-    plt.xlabel('period')
-    plt.ylabel('inactivity')
+    plt.xlabel('LIDS cycle')
+    plt.ylabel('Inactivity')
     plt.title('Normalized Activity')
     # Call process_normalized for each age interval and plot with appropriate color
     for i, sex in enumerate(sex_intervals):
@@ -909,8 +909,8 @@ def set_up_plot_age_binned_normal(filenames, age_sex_etiology_dict):
         'age 80-100': (0.7, 0, 0.7),  # Red
     }
     # Create the figure
-    plt.xlabel('period')
-    plt.ylabel('inactivity')
+    plt.xlabel('LIDS cycle')
+    plt.ylabel('Inactivity')
     plt.title('Normalized Activity')
     # Call process_normalized for each age interval and plot with appropriate color
     for i, age_interval in enumerate(age_intervals):
@@ -931,8 +931,8 @@ def set_up_plot_age_binned_over_under_75(filenames, age_sex_etiology_dict):
         'over 75': (1, 0, 0),  # Red
     }
     # Create the figure
-    plt.xlabel('period')
-    plt.ylabel('inactivity')
+    plt.xlabel('LIDS cycle')
+    plt.ylabel('Inactivity')
     plt.title('Normalized Activity')
     # Call process_normalized for each age interval and plot with appropriate color
     for i, age_interval in enumerate(age_intervals):
@@ -954,8 +954,8 @@ def set_up_plot_binned_etiology(filenames, age_sex_etiology_dict):
         'LB': (0, 0, 1)   # Blue
     }
     # Create the figure
-    plt.xlabel('period')
-    plt.ylabel('inactivity')
+    plt.xlabel('LIDS cycle')
+    plt.ylabel('Inactivity')
     plt.title('Normalized Activity')
     # Call process_normalized for each age interval and plot with appropriate color
     for i, etiology in enumerate(etiology_intervals):
@@ -984,29 +984,29 @@ filenames = [filename for filename in os.listdir(directory) if filename.endswith
 #plt.show()
 
 # 3) for the normalized plot, all filenames
-process_normalized_with_confidence_intervals(filenames, '', '')  # FUNCTION CALL FOR NORMALIZED LIDS GRAPH
-plt.show()
+#process_normalized_with_confidence_intervals(filenames, '', '')  # FUNCTION CALL FOR NORMALIZED LIDS GRAPH
+#plt.show()
 
 # define the dictionary, to look up age, sex, etiology information for each user
 age_sex_etiology_dict = sex_age_bins_LIDS.initialize_user_dictionary('AgeSexDx_n166_2023-07-13.csv')
 
 ### 4) create the normalized plot, BINNED BY SEX ###
-#plt.figure()
-#set_up_plot_sex_binned(filenames, age_sex_etiology_dict)
+plt.figure()
+set_up_plot_sex_binned(filenames, age_sex_etiology_dict)
 
 ### 5) create the normalized plot, BINNED BY AGE NORMALLY ###
-#plt.figure()
-#set_up_plot_age_binned_normal(filenames, age_sex_etiology_dict)
+plt.figure()
+set_up_plot_age_binned_normal(filenames, age_sex_etiology_dict)
 
 ### 6) create the normalized plot, BINNED BY AGE OVER UNDER 75 ###
-#plt.figure()
-#set_up_plot_age_binned_over_under_75(filenames, age_sex_etiology_dict)
+plt.figure()
+set_up_plot_age_binned_over_under_75(filenames, age_sex_etiology_dict)
 
 ### 7) create the normalized plot, BINNED BY ETIOLOGY ###
-#plt.figure()
-#set_up_plot_binned_etiology(filenames, age_sex_etiology_dict)
+plt.figure()
+set_up_plot_binned_etiology(filenames, age_sex_etiology_dict)
 
-#plt.show()
+plt.show()
 
 
 

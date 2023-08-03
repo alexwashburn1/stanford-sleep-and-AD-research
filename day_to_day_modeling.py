@@ -230,6 +230,18 @@ objective_sleep_df_fixed = reformat_date_european_to_american_objective(objectiv
 merged_df = merge_objective_subjective_files(subjective_sleep_df_all_fixed, objective_sleep_df_fixed)
 merged_df_final = merged_objsubj_agesexetiology(merged_df, diagnosis_data_df)
 
+##### DETERMINE MEAN OF SUBJ AND OBJ VARIABLES BY ETIOLOGY #####
+filtered_df = merged_df_final[merged_df_final['Etiology'] != 'Other']
+
+# Group the DataFrame by 'Etiology' and calculate the mean of the 'Well rested' column for each group
+mean_well_rested_by_etiology = filtered_df.groupby('Etiology')['sleep_efficiency'].mean()
+print(mean_well_rested_by_etiology)
+
+# get the etiology counts
+etiology_counts = filtered_df['Etiology'].value_counts()
+print(etiology_counts)
+
+
 ##### OBJECTIVE VS SUBJECTIVE PLOTS #####
 # read in the merged data frame
 #merged_df = pd.read_csv(filepath + 'objective_subjective_merged.csv')
