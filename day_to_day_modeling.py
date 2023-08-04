@@ -245,6 +245,26 @@ filtered_df = merged_df_final[merged_df_final['Etiology'] != 'Other']
 grouped_counts = merged_df_final.groupby('Etiology')['File Name'].nunique()
 print(grouped_counts)
 
+# Get the mean age
+grouped_df = merged_df_final.groupby('File Name').first().reset_index()
+grouped_df_by_etiology = grouped_df.groupby('Etiology')['Age'].agg(['mean', 'std'])
+
+# Get the mean length by etiology
+# Step 1: Group the DataFrame by 'Etiology' and 'Study ID'
+grouped_by_etiology_study_id = merged_df_final.groupby(['Etiology', 'Study ID'])
+
+# Step 2: Calculate the record length (number of rows) for each etiology and study ID group
+record_lengths = grouped_by_etiology_study_id.size()
+
+# Step 3: Calculate the mean and standard deviation of the record lengths for each etiology
+mean_record_length_by_etiology = record_lengths.groupby('Etiology').mean()
+std_record_length_by_etiology = record_lengths.groupby('Etiology').std()
+
+print('Mean record length by etiology:\n', mean_record_length_by_etiology)
+print('Standard deviation of record length by etiology:\n', std_record_length_by_etiology)
+
+print('Mean and Standard Deviation of Age by etiology:\n', grouped_df_by_etiology)
+
 # get the male vs female counts
 ad_df = filtered_df[filtered_df['Etiology'] == 'AD']
 hc_df = filtered_df[filtered_df['Etiology'] == 'HC']
@@ -270,6 +290,7 @@ male_female_dfs.append(lb_df_female)
 
 for df in male_female_dfs:
     print(df['File Name'].nunique())
+
 
 
 
