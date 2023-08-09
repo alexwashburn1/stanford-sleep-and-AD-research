@@ -146,9 +146,10 @@ def merged_objsubj_agesexetiology(merged_df, age_sex_etiology_df):
     merged_df = pd.merge(merged_df, age_sex_etiology_df, left_on='File Name', right_on='Actigraphy_File', how='left')
 
     # write it to csv
-    merged_df.to_csv(filepath + 'objective_subjective_merged.csv', index=False)
-
+    merged_df.to_csv(filepath + 'objective_subjective_merged_with_severity.csv', index=False)
+    print('exported to csv.')
     return merged_df
+
 
 
 def plot_obj_vs_subjective_unbinned(merged_df, subj_x_value, obj_y_value, color, obj_y_axis_name):
@@ -214,7 +215,7 @@ subjective_data_filename_all = 'ActigraphyDatabase-FullSleepLogs_DATA_LABELS_202
 subjective_data_filename_1 = 'Full_Sleep_Logs_July2023.csv'
 subjective_data_filename_2 = 'Sleep_Questionnaire_Data_Entry_July2023_REDCAP_fixed.csv'
 objective_data_filename = 'part4_nightsummary_sleep_cleaned.csv'
-diagnosis_data_filename = 'AgeSexDx_n166_2023-07-13.csv'
+diagnosis_data_filename = 'AgeSexDx_n166_2023-08-08.csv'
 
 # extract dataframes in a tuple
 (subjective_sleep_df_all, subjective_sleep_df_July_2023, subjective_sleep_df_REDCAP_fixed,
@@ -231,7 +232,7 @@ merged_df = merge_objective_subjective_files(subjective_sleep_df_all_fixed, obje
 merged_df_final = merged_objsubj_agesexetiology(merged_df, diagnosis_data_df)
 
 ##### DETERMINE MEAN OF SUBJ AND OBJ VARIABLES BY ETIOLOGY #####
-filtered_df = merged_df_final[merged_df_final['Etiology'] != 'Other']
+#filtered_df = merged_df_final[merged_df_final['Etiology'] != 'Other']
 
 # Group the DataFrame by 'Etiology' and calculate the mean of the 'Well rested' column for each group
 #mean_well_rested_by_etiology = filtered_df.groupby('Etiology')['sleep_efficiency'].mean()
@@ -242,54 +243,54 @@ filtered_df = merged_df_final[merged_df_final['Etiology'] != 'Other']
 #print(etiology_counts)
 
 # get the subject counts.
-grouped_counts = merged_df_final.groupby('Etiology')['File Name'].nunique()
-print(grouped_counts)
+#grouped_counts = merged_df_final.groupby('Etiology')['File Name'].nunique()
+#print(grouped_counts)
 
 # Get the mean age
-grouped_df = merged_df_final.groupby('File Name').first().reset_index()
-grouped_df_by_etiology = grouped_df.groupby('Etiology')['Age'].agg(['mean', 'std'])
+#grouped_df = merged_df_final.groupby('File Name').first().reset_index()
+#grouped_df_by_etiology = grouped_df.groupby('Etiology')['Age'].agg(['mean', 'std'])
 
 # Get the mean length by etiology
 # Step 1: Group the DataFrame by 'Etiology' and 'Study ID'
-grouped_by_etiology_study_id = merged_df_final.groupby(['Etiology', 'Study ID'])
+#grouped_by_etiology_study_id = merged_df_final.groupby(['Etiology', 'Study ID'])
 
 # Step 2: Calculate the record length (number of rows) for each etiology and study ID group
-record_lengths = grouped_by_etiology_study_id.size()
+#record_lengths = grouped_by_etiology_study_id.size()
 
 # Step 3: Calculate the mean and standard deviation of the record lengths for each etiology
-mean_record_length_by_etiology = record_lengths.groupby('Etiology').mean()
-std_record_length_by_etiology = record_lengths.groupby('Etiology').std()
+#mean_record_length_by_etiology = record_lengths.groupby('Etiology').mean()
+#std_record_length_by_etiology = record_lengths.groupby('Etiology').std()
 
-print('Mean record length by etiology:\n', mean_record_length_by_etiology)
-print('Standard deviation of record length by etiology:\n', std_record_length_by_etiology)
+#print('Mean record length by etiology:\n', mean_record_length_by_etiology)
+#print('Standard deviation of record length by etiology:\n', std_record_length_by_etiology)
 
-print('Mean and Standard Deviation of Age by etiology:\n', grouped_df_by_etiology)
+#print('Mean and Standard Deviation of Age by etiology:\n', grouped_df_by_etiology)
 
 # get the male vs female counts
-ad_df = filtered_df[filtered_df['Etiology'] == 'AD']
-hc_df = filtered_df[filtered_df['Etiology'] == 'HC']
-lb_df = filtered_df[filtered_df['Etiology'] == 'LB']
+#ad_df = filtered_df[filtered_df['Etiology'] == 'AD']
+#hc_df = filtered_df[filtered_df['Etiology'] == 'HC']
+#lb_df = filtered_df[filtered_df['Etiology'] == 'LB']
 
 # Filter to get only the male and female
-male_female_dfs = []
+#male_female_dfs = []
 
-ad_df_male = ad_df[ad_df['Sex'] == 'Male']
-male_female_dfs.append(ad_df_male)
-ad_df_female = ad_df[ad_df['Sex'] == 'Female']
-male_female_dfs.append(ad_df_female)
+#ad_df_male = ad_df[ad_df['Sex'] == 'Male']
+#male_female_dfs.append(ad_df_male)
+#ad_df_female = ad_df[ad_df['Sex'] == 'Female']
+#male_female_dfs.append(ad_df_female)
 
-hc_df_male = hc_df[hc_df['Sex'] == 'Male']
-male_female_dfs.append(hc_df_male)
-hc_df_female = hc_df[hc_df['Sex'] == 'Female']
-male_female_dfs.append(hc_df_female)
+#hc_df_male = hc_df[hc_df['Sex'] == 'Male']
+#male_female_dfs.append(hc_df_male)
+#hc_df_female = hc_df[hc_df['Sex'] == 'Female']
+#male_female_dfs.append(hc_df_female)
 
-lb_df_male = lb_df[lb_df['Sex'] == 'Male']
-male_female_dfs.append(lb_df_male)
-lb_df_female = lb_df[lb_df['Sex'] == 'Female']
-male_female_dfs.append(lb_df_female)
+#lb_df_male = lb_df[lb_df['Sex'] == 'Male']
+#male_female_dfs.append(lb_df_male)
+#lb_df_female = lb_df[lb_df['Sex'] == 'Female']
+#male_female_dfs.append(lb_df_female)
 
-for df in male_female_dfs:
-    print(df['File Name'].nunique())
+#for df in male_female_dfs:
+#    print(df['File Name'].nunique())
 
 
 
