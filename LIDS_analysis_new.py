@@ -216,10 +216,9 @@ def set_up_plot(filenames):
 
             (lids_period, r, p, MRI, onset_phase, offset_phase) = cosine_fit(lids_obj, bout_with_filename[0])
 
-            if p < 0.05: # and str(lids_period) != '17.5': (can comment back in)
+            if p < 0.05 and str(lids_period) != '17.5': #(can comment back in)
                 all_bouts_all_files.append(bout_with_filename)
             else:
-                print('i: ', i)
                 print('lids period: ', lids_period)
                 count_of_invalid_bouts += 1
 
@@ -589,7 +588,7 @@ def mean_of_bouts_normalized(lids_obj, bouts):
         bout_info_df = bout_info_df.append(row_data, ignore_index=True)
 
 
-        if p < 0.05:
+        if p < 0.05 and str(lids_period) != '17.5':
             periods.append(lids_period)
             onset_phases.append(onset_phase)
             activity_data.append(extract_activity_data(bouts[i]))  # append the activity data from each bout
@@ -963,6 +962,35 @@ def set_up_plot_binned_etiology(filenames, age_sex_etiology_dict):
     # Add the legend with custom title and location
     plt.legend(title='Etiology', loc='upper right')
 
+def visualize_roenneberg_sleep_bouts_transormed(filename):
+    """
+    Visualize how Roenneberg detects sleep bouts on raw actigraphy data. Then, run the LIDS transform on a SINGLE bout
+    within the actigraphy record to visualize the transform (Mirrors Winnebeck fig 1B)
+    :param filename: the filename corresponding to the subject's Actigraphy record to visualize
+    :return:
+    """
+
+    # retrieve the raw data
+    raw = read_input_data(filename)
+
+    # create a roenneberg object
+    roenneberg = raw.Roenneberg()
+
+    # layout
+    layout = go.Layout(
+        title="Rest/Activity detection",
+        xaxis=dict(title="Date time"),
+        yaxis=dict(title="Counts/period"),
+        yaxis2 = dict(overlaying='y', side='right'),
+        showlegend=True)
+
+    roenneberg_fig = go.Figure(data=[
+        go.Scatter(x=raw.data.index.astype(str), y=raw.data, name='Data'),
+        go.Scatter(x=roenneberg.index.astype(str), y=roenneberg, yaxis='y2', name='Roenneberg')
+    ], layout=layout)
+
+    roenneberg_fig.show()
+
 
 
 
@@ -987,26 +1015,35 @@ filenames = [filename for filename in os.listdir(directory) if filename.endswith
 #process_normalized_with_confidence_intervals(filenames, '', '')  # FUNCTION CALL FOR NORMALIZED LIDS GRAPH
 #plt.show()
 
-# define the dictionary, to look up age, sex, etiology information for each user
-age_sex_etiology_dict = sex_age_bins_LIDS.initialize_user_dictionary('AgeSexDx_n166_2023-07-13.csv')
+### define the dictionary, to look up age, sex, etiology information for each user ###
+#age_sex_etiology_dict = sex_age_bins_LIDS.initialize_user_dictionary('AgeSexDx_n166_2023-07-13.csv')
 
 ### 4) create the normalized plot, BINNED BY SEX ###
-plt.figure()
-set_up_plot_sex_binned(filenames, age_sex_etiology_dict)
+#plt.figure()
+#set_up_plot_sex_binned(filenames, age_sex_etiology_dict)
 
 ### 5) create the normalized plot, BINNED BY AGE NORMALLY ###
-plt.figure()
-set_up_plot_age_binned_normal(filenames, age_sex_etiology_dict)
+#plt.figure()
+#set_up_plot_age_binned_normal(filenames, age_sex_etiology_dict)
 
 ### 6) create the normalized plot, BINNED BY AGE OVER UNDER 75 ###
-plt.figure()
-set_up_plot_age_binned_over_under_75(filenames, age_sex_etiology_dict)
+#plt.figure()
+#set_up_plot_age_binned_over_under_75(filenames, age_sex_etiology_dict)
 
 ### 7) create the normalized plot, BINNED BY ETIOLOGY ###
-plt.figure()
-set_up_plot_binned_etiology(filenames, age_sex_etiology_dict)
+#plt.figure()
+#set_up_plot_binned_etiology(filenames, age_sex_etiology_dict)
 
-plt.show()
+##
+
+### 8) create visualization plot of raw data vs LIDS transformed data
+visualize_roenneberg_sleep_bouts_transormed(str(filenames[5]))
+
+
+
+#plt.show()
+
+
 
 
 
