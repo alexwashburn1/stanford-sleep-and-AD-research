@@ -972,21 +972,58 @@ def visualize_roenneberg_sleep_bouts_transormed(filename):
 
     # retrieve the raw data
     raw = read_input_data(filename)
+    print('before modification: ', len(raw.data))
 
-    # create a roenneberg object
-    roenneberg = raw.Roenneberg()
+    # Replace values greater than 400 with 150
+    raw.data.loc[raw.data > 400] = 150
+
+    print('length after modification: ', len(raw.data))
+
+
+    print(type(raw.data))
 
     # layout
     layout = go.Layout(
         title="Rest/Activity detection",
         xaxis=dict(title="Date time"),
-        yaxis=dict(title="Counts/period"),
-        yaxis2 = dict(overlaying='y', side='right'),
-        showlegend=True)
+        yaxis=dict(showticklabels=False), # for raw data
+        yaxis2=dict(overlaying='y', side='right', showticklabels=False), # for Roenneberg
+        yaxis3={"overlaying": "y", "side": "right", "showticklabels": False, "range": [11.5, 110]}, # for LIDS transformed data
+        showlegend=True,
+        plot_bgcolor='white',  # Set background color to white
+        xaxis_showgrid=False,  # Hide x-axis grid lines
+        yaxis_showgrid=False  # Hide y-axis grid lines
+       # yaxis2_showgrid=False,  # Hide y-axis2 grid lines
+       # yaxis3_showgrid=False  # Hide y-axis3 grid lines
+    )
 
+    # retrieve onset and offset times for the sleep bouts
+    (wakes, sleeps) = raw.Roenneberg_AoT()
+    print((wakes, sleeps))
+    i = 5
+
+    # retrieve the bout in question (raw data)
+    bout = extract_bout(raw.data, sleeps[i], wakes[i])
+
+    # retrieve the narrowed-down record of data
+    raw_sleep_data = extract_bout(raw.data, wakes[4], sleeps[6])
+
+    raw_sleep_data.loc[raw_sleep_data > 200] = 50 # fix for invalid activity readings
+
+    # create a roenneberg object
+    roenneberg = raw.Roenneberg()
+    # trim it in accordance with the raw data, for plotting
+    trimmed_roenneberg = extract_bout(roenneberg, wakes[4], sleeps[6])
+
+
+    # LIDS transform the bout in question
+    lids_transformed = lids_obj.lids_transform(ts=bout)
+
+    # plot a timeseries of roenneberg sleep detection, raw data, and LIDS transformed data (for one bout)
     roenneberg_fig = go.Figure(data=[
-        go.Scatter(x=raw.data.index.astype(str), y=raw.data, name='Data'),
-        go.Scatter(x=roenneberg.index.astype(str), y=roenneberg, yaxis='y2', name='Roenneberg')
+        go.Scatter(x=raw_sleep_data.index.astype(str), y=raw_sleep_data, fill='tozeroy', name='Data'),
+        go.Scatter(x=trimmed_roenneberg.index.astype(str), y=trimmed_roenneberg, yaxis='y2', fill='tozeroy', name='Roenneberg', fillcolor='rgba(255, 165, 0, 0.0)'),
+        #go.Scatter(x=lids_transformed.index.astype(str), y=lids_transformed, yaxis='y3', fill='tozeroy', name='LIDS')
     ], layout=layout)
 
     roenneberg_fig.show()
