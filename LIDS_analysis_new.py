@@ -969,18 +969,11 @@ def visualize_roenneberg_sleep_bouts_transormed(filename):
     :param filename: the filename corresponding to the subject's Actigraphy record to visualize
     :return:
     """
-
     # retrieve the raw data
     raw = read_input_data(filename)
-    print('before modification: ', len(raw.data))
 
     # Replace values greater than 400 with 150
     raw.data.loc[raw.data > 400] = 150
-
-    print('length after modification: ', len(raw.data))
-
-
-    print(type(raw.data))
 
     # layout
     layout = go.Layout(
@@ -999,7 +992,6 @@ def visualize_roenneberg_sleep_bouts_transormed(filename):
 
     # retrieve onset and offset times for the sleep bouts
     (wakes, sleeps) = raw.Roenneberg_AoT()
-    print((wakes, sleeps))
     i = 5
 
     # retrieve the bout in question (raw data)
@@ -1015,7 +1007,6 @@ def visualize_roenneberg_sleep_bouts_transormed(filename):
     # trim it in accordance with the raw data, for plotting
     trimmed_roenneberg = extract_bout(roenneberg, wakes[4], sleeps[6])
 
-
     # LIDS transform the bout in question
     lids_transformed = lids_obj.lids_transform(ts=bout)
 
@@ -1023,7 +1014,7 @@ def visualize_roenneberg_sleep_bouts_transormed(filename):
     roenneberg_fig = go.Figure(data=[
         go.Scatter(x=raw_sleep_data.index.astype(str), y=raw_sleep_data, fill='tozeroy', name='Data'),
         go.Scatter(x=trimmed_roenneberg.index.astype(str), y=trimmed_roenneberg, yaxis='y2', fill='tozeroy', name='Roenneberg', fillcolor='rgba(255, 165, 0, 0.0)'),
-        #go.Scatter(x=lids_transformed.index.astype(str), y=lids_transformed, yaxis='y3', fill='tozeroy', name='LIDS')
+        go.Scatter(x=lids_transformed.index.astype(str), y=lids_transformed, yaxis='y3', fill='tozeroy', name='LIDS')
     ], layout=layout)
 
     roenneberg_fig.show()
@@ -1037,7 +1028,9 @@ def visualize_roenneberg_sleep_bouts_transormed(filename):
 directory = '/Users/awashburn/Library/CloudStorage/OneDrive-BowdoinCollege/Documents/' \
                  'Mormino-Lab-Internship/Python-Projects/Actigraphy-Testing/timeSeries-actigraphy-csv-files/all-data-files/'
 
-filenames = [filename for filename in os.listdir(directory) if filename.endswith('timeSeries.csv.gz')]      # CHANGE THIS BACK - to 'timeSeries.csv.gz'
+filenames = [filename for filename in os.listdir(directory) if filename.endswith('timeSeries.csv.gz')]
+print('length filenames: ', len(filenames))
+# CHANGE THIS BACK - to 'timeSeries.csv.gz'
 
 # 1) for mean, non-normalized plot
 #padded_bouts = set_up_plot(filenames) # FUNCTION CALL FOR NON-NORMALIZED LIDS GRAPH
@@ -1074,7 +1067,7 @@ filenames = [filename for filename in os.listdir(directory) if filename.endswith
 ##
 
 ### 8) create visualization plot of raw data vs LIDS transformed data
-visualize_roenneberg_sleep_bouts_transormed(str(filenames[5]))
+#visualize_roenneberg_sleep_bouts_transormed(str(filenames[5]))
 
 
 
