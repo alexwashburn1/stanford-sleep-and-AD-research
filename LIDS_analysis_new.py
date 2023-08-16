@@ -16,6 +16,7 @@ import sex_age_bins_LIDS
 from matplotlib.colors import LinearSegmentedColormap
 from matplotlib.colors import ListedColormap
 from scipy.stats import sem
+import statistics
 
 # Create a LIDS object
 lids_obj = LIDS()
@@ -206,9 +207,11 @@ def set_up_plot(filenames):
     total_bouts = 0
     count_of_invalid_bouts = 0
     all_bouts_all_files = []
+    bout_counts = []
     for i in range(len(filenames)):
         print('processing file: ', i)
         (all_bouts_from_file, n_bouts_in_file) = per_file_no_mean(filenames[i])
+        bout_counts.append(n_bouts_in_file)
 
         for j in range(len(all_bouts_from_file)):
             # append the bouts from each file to the total list of bouts
@@ -223,6 +226,24 @@ def set_up_plot(filenames):
                 count_of_invalid_bouts += 1
 
         total_bouts += n_bouts_in_file
+
+    print('median number of bouts: ', statistics.median(bout_counts))
+    print('min bouts from a file: ', min(bout_counts))
+    print('max bouts from a file: ', max(bout_counts))
+
+    # get a list of all bout lengths
+    bout_lengths = [len(bout[0]) for bout in all_bouts_all_files]
+
+    # Calculate the median of the bout lengths
+    median_bout_length = statistics.median(bout_lengths)
+    print('median bout length: ', median_bout_length)
+    print('min bout length: ', min(bout_lengths))
+    print('max bout length: ', max(bout_lengths))
+    total_sum = 0
+    for bout in bout_lengths:
+        total_sum += bout
+    print('total bout duration: ', total_sum)
+
 
     # Iterate over all bouts, removing the first 4 epochs. TODO - DELETE IF NOT WANTED
     temp_all_bouts = []
@@ -280,13 +301,11 @@ def set_up_plot(filenames):
 
     confidence_intervals = []
     for i in range(len(total_mean)):
-       print('i: ', i)
        bout_values = [bout[0][i] for bout in padded_bouts if bout[0][i] != 0]
        confidence_intervals.append(1.96 * sem(bout_values))  # 95% confidence interval, assuming a normal distribution
 
     plt.title(f'mean of {len(padded_bouts)} bouts')
 
-    print('about to plot (c)')
     plt.plot(x_axis_minutes, total_mean)
     plt.fill_between(x_axis_minutes, total_mean - confidence_intervals, total_mean + confidence_intervals,
                      alpha=0.2)
@@ -1033,7 +1052,7 @@ print('length filenames: ', len(filenames))
 # CHANGE THIS BACK - to 'timeSeries.csv.gz'
 
 # 1) for mean, non-normalized plot
-#padded_bouts = set_up_plot(filenames) # FUNCTION CALL FOR NON-NORMALIZED LIDS GRAPH
+padded_bouts = set_up_plot(filenames) # FUNCTION CALL FOR NON-NORMALIZED LIDS GRAPH
 #plt.show()
 
 # 2) outlier analysis
