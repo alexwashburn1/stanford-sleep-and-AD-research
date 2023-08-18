@@ -97,15 +97,14 @@ def extract_activity_data(bout):
     :return: Pandas Series of  activity values
     """
     # given Panda series of (timestamp, activity value) tuples, extract the activity values
-
-
     df = pd.DataFrame(bout.tolist())
     return df[0]   # return the activity values
 
 
 def helper_unequal_sleep_wakes(lids_obj, raw, wakes, sleeps):
     """
-    Helper function for find_bouts that will skip a subject if the subject has an unequal record of sleeps and wakes.
+    Helper function for find_bouts that will skip a subject if the subject has an unequal record of sleeps and wakes
+    (returned by Roenneberg, bug from pyActigraphy automatic method).
     :param lids_obj: lids object
     :param raw: actigraphy data for the subject
     :return:
@@ -120,13 +119,16 @@ def helper_unequal_sleep_wakes(lids_obj, raw, wakes, sleeps):
         return False
 
 def find_bouts(lids_obj, raw):
-    # extract sleep periods from the raw data from one file, via Roennebergs's AoT method
-    # filter the extracted sleep periods for sleep periods too short or too long
-    # transform activity data for each sleep period to inactivity data
-
-    # use the helper function first to ensure that the number of wakes and the number of sleeps are not unequal. If they
+    """
+    extract sleep periods from the raw data from one file, via Roennebergs's AoT method:
+    # 1) filter the extracted sleep periods for sleep periods too short or too long
+    # 2) transform activity data for each sleep period to inactivity data
+    # note that we use the helper function first to ensure that the number of wakes and the number of sleeps are not unequal. If they
     # are, ignore the record.
-
+    :param lids_obj:
+    :param raw:
+    :return:
+    """
     (wakes, sleeps) = raw.Roenneberg_AoT()
 
     if helper_unequal_sleep_wakes(lids_obj, raw, wakes, sleeps) == True:
@@ -160,27 +162,7 @@ def find_bouts(lids_obj, raw):
         else:   # don't transform
             bouts_transformed.append(sleep_bouts_filtered[i])
 
-
-    #TODO - COMMENT OUT the code below if you don't want to delete the first 4 epochs
-    all_bouts_first_4_epochs_removed = []
-    for bout in bouts_transformed:
-        new_bout = bout[0:] # change to 4 if desired to filter out first 4 epochs.
-        all_bouts_first_4_epochs_removed.append(new_bout)
-
-    return all_bouts_first_4_epochs_removed
-
-
-def find_shortest_series(series):
-    """
-
-    :param series: list of Series of sleep activity values
-    :return: length of shortest list
-    """
-    min_length = sys.maxsize
-    for i in range(len(series)):
-        if len(series[i]) < min_length:
-            min_length = len(series[i])  # update the min length
-    return min_length
+    return bouts_transformed
 
 
 def per_file_no_mean(filename):
@@ -189,12 +171,10 @@ def per_file_no_mean(filename):
     :param filename: the file to generate a list of bouts for.
     :return: a list of all of the bouts in the file, and the number of bouts in the file.
     """
-
     raw = read_input_data(filename)
     bouts = find_bouts(lids_obj, raw)
 
     return (bouts, len(bouts))
-
 
 
 def set_up_plot(filenames):
@@ -219,44 +199,24 @@ def set_up_plot(filenames):
 
             (lids_period, r, p, MRI, onset_phase, offset_phase) = cosine_fit(lids_obj, bout_with_filename[0])
 
-            if p < 0.05 and str(lids_period) != '17.5': #(can comment back in)
+            if p < 0.05 and str(lids_period) != '17.5':     # change to "if p < 0.05" to include bouts with (potentially) invalid best-fit periods
                 all_bouts_all_files.append(bout_with_filename)
             else:
-                print('lids period: ', lids_period)
                 count_of_invalid_bouts += 1
 
         total_bouts += n_bouts_in_file
 
-    print('median number of bouts: ', statistics.median(bout_counts))
-    print('min bouts from a file: ', min(bout_counts))
-    print('max bouts from a file: ', max(bout_counts))
-
     # get a list of all bout lengths
     bout_lengths = [len(bout[0]) for bout in all_bouts_all_files]
 
-    # Calculate the median of the bout lengths
-    median_bout_length = statistics.median(bout_lengths)
-    print('median bout length: ', median_bout_length)
-    print('min bout length: ', min(bout_lengths))
-    print('max bout length: ', max(bout_lengths))
     total_sum = 0
     for bout in bout_lengths:
         total_sum += bout
     print('total bout duration: ', total_sum)
 
-
-    # Iterate over all bouts, removing the first 4 epochs. TODO - DELETE IF NOT WANTED
-    temp_all_bouts = []
-    for bout in all_bouts_all_files:
-        filename = bout[1]
-        new_bout = bout[0].iloc[0:] # change to 4 if desired to filter out first 4 epochs.
-        bout_tuple = (new_bout, filename)
-
-        temp_all_bouts.append(bout_tuple)
-
     # pad arrays shorter than 6 hours with zeros
     padded_bouts = []
-    for bout in temp_all_bouts:
+    for bout in all_bouts_all_files:
         filename = bout[1]
         bout_length = len(bout[0]) # bout[0] should represent the bout itself
         target_length = 36
@@ -296,9 +256,7 @@ def set_up_plot(filenames):
         if count != 0:
             total_mean[i] = sum / count
 
-
-    # confidence interval attempt:
-
+    # add confidence intervals to the plot
     confidence_intervals = []
     for i in range(len(total_mean)):
        bout_values = [bout[0][i] for bout in padded_bouts if bout[0][i] != 0]
@@ -309,7 +267,6 @@ def set_up_plot(filenames):
     plt.plot(x_axis_minutes, total_mean)
     plt.fill_between(x_axis_minutes, total_mean - confidence_intervals, total_mean + confidence_intervals,
                      alpha=0.2)
-
 
     return padded_bouts
 
@@ -337,7 +294,7 @@ def box_plot_outliers(padded_bouts):
     # Get the indices of the 3 highest outliers for epoch #1 (first column)
     outliers_indices = np.argsort(first_five_values[:, 0])[-3:]
 
-    # Get the filename values of the 3 highest outliers for epoch # 1
+    # Get the filenames of the 3 highest outliers for epoch # 1, to manually inspect
     outlier_index_1 = outliers_indices[0]
     outlier_index_2 = outliers_indices[1]
     outlier_index_3 = outliers_indices[2]
@@ -346,14 +303,6 @@ def box_plot_outliers(padded_bouts):
     filename_3 = padded_bouts[outlier_index_3][1]
     outlier_filenames = [filename_1, filename_2, filename_3]
     print('filenames of the outliers: ', outlier_filenames)
-    # filenames of the outliers:  ['68307_0003900477-timeSeries.csv.gz', '75189_0000001011-timeSeries.csv.gz', '67180_0003900497-timeSeries.csv.gz']
-
-    # print the bout timing so I can see which specific one it is in the filename
-    print('bout right before graph # 1 bout: ', padded_bouts[outlier_index_1 - 1][0])
-    print('bout from graph #1: ', padded_bouts[outlier_index_1][0])
-    print('bout right after graph # 1 bout: ', padded_bouts[outlier_index_1 + 1][0])
-    print('bout from graph #2: ', padded_bouts[outlier_index_2][0])
-    print('bout from graph #3: ', padded_bouts[outlier_index_3][0])
 
     # Create the box plot
     plt.violinplot(first_five_values)
@@ -378,11 +327,7 @@ def box_plot_outliers(padded_bouts):
         # Plot the original x-axis values with jittered y-axis values
         plt.scatter(x_jittered, y_jittered, marker='o', alpha=0.3, color='blue', s=6)
 
-
-    print('outliers indices: ', outliers_indices)
     return outliers_indices
-
-
 
 
 def plot_outlier_bouts(outliers_indices, padded_bouts):
@@ -392,14 +337,11 @@ def plot_outlier_bouts(outliers_indices, padded_bouts):
     :param padded_bouts: all the bouts (to be indexed with the outlier indices)
     :return:
     """
-    # outlier indices: 1 = 1213, 2 = 1163, 3 = 520 (for the entire data set)
+    # outlier indices: 1 = 1213, 2 = 1163, 3 = 520 (for the entire data set) - manual extraction
     # extract individual bouts
-    bout_1 = padded_bouts[1213]
-    print('length bout 1: ', len(bout_1))
-    bout_2 = padded_bouts[1163]
-    print('length bout 2: ', len(bout_2))
-    bout_3 = padded_bouts[520]
-    print('length bout 3: ', len(bout_3))
+    bout_1 = padded_bouts[outliers_indices[0]]
+    bout_2 = padded_bouts[outliers_indices[1]]
+    bout_3 = padded_bouts[outliers_indices[2]]
 
     bouts_data = [bout_1, bout_2, bout_3]
     n_bouts = len(bouts_data)
@@ -423,58 +365,28 @@ def plot_outlier_bouts(outliers_indices, padded_bouts):
     # Adjust layout to avoid overlap of subplots
     plt.tight_layout()
 
-
-
-
 def cosine_fit(lids_obj, bout):
     """
-    Fit a cosine to the bout data
+    Fit a cosine to a raw Actigraphy bout, and return relevant metrics.
     :param lids_obj:
     :param bout:
     :return: period
     """
-    lids_obj.lids_fit(lids=bout, nan_policy='omit', bounds=('30min', '180min'), verbose=False) # CHANGE TO 180 MIN
+    lids_obj.lids_fit(lids=bout, nan_policy='omit', bounds=('30min', '180min'), verbose=False)
 
-    # statistics
-    lids_period = lids_obj.lids_fit_results.params['period'].value # comment in * 10
-
-    if str(lids_period) == '17.5':
-        x_axis_minutes = np.arange(0, len(bout) * 10, 10)
-        temp_bout = bout
-        #plt.figure()
-        #plt.xlabel('minutes since sleep onset')
-        #plt.ylabel('inactivity')
-        #plt.title('LIDS transformed data for bout with LIDS period >= 175')
-        #plt.plot(x_axis_minutes, temp_bout)
-        #plt.show()
-
-
-    else:
-        x_axis_minutes = np.arange(0, len(bout) * 10, 10)
-        temp_bout = bout
-        #plt.figure()
-        #plt.xlabel('minutes since sleep onset')
-        #plt.ylabel('inactivity')
-        #plt.title(f'n=1 sleep bout')
-        #plt.plot(x_axis_minutes, temp_bout)
-        #plt.show()
-
-
-
+    # compute relevant statistics
+    lids_period = lids_obj.lids_fit_results.params['period'].value # note that the period returned here is in 10 minute intervals (mult. by 10 to convert to minutes)
     (r, p) = lids_obj.lids_pearson_r(bout)
-
     MRI = lids_obj.lids_mri(bout)
-
     (onset_phase, offset_phase) = lids_obj.lids_phases(bout)
 
     # create a dataframe for all bouts with LIDS period, r, p, MRI, onset phase, and offset phase as columns
     return (lids_period, r, p, MRI, onset_phase, offset_phase)
 
 
-
 def normalize_to_period(activity, period, onset_phase):
     """
-    Normalize the activity data to the period
+    Normalize sleep bouts contained in "activity" to their best-fit cosine period.
     :param activity: list of activity data
     :param period: period of the activity data
     :return: normalized activity data
@@ -494,14 +406,6 @@ def normalize_to_period(activity, period, onset_phase):
         normalized2.append(np.array(normalized[i])) # make an array of the tuples
     normalized3 = np.array(normalized2)
     return normalized3
-
-def find_max_x_value(bouts):
-    max_x_value = 0
-    for bout in bouts:
-        last_x_y = bout[-1]
-        print (last_x_y)
-        max_x_value = max(max_x_value, last_x_y[0])
-    return max_x_value
 
 def find_y_average_in_bin(normalized_bouts_array, bin_x_start, bin_x_end):
     """
@@ -529,7 +433,11 @@ def find_y_average_in_bin(normalized_bouts_array, bin_x_start, bin_x_end):
     return (average, confidence_interval)
 
 def hist_of_periods(periods):
-    #### HISTOGRAM OF PERIODS ####
+    """
+    Recreate figure 1G from Winnebeck 2018: examine distribution of the best-fit periods.
+    :param periods: periods of all LIDS bouts being used for analysis
+    :return:
+    """
     # get the value of periods in minutes for the histogram of period distribution
     periods_for_hist = [period * 10 for period in periods]
 
@@ -573,8 +481,6 @@ def hist_of_periods(periods):
     ax1.text(0.03, 0.95, text_box, transform=ax1.transAxes, ha='left', va='top',
              bbox=dict(facecolor='white', edgecolor='black'))
 
-    #plt.show()
-
 
 def mean_of_bouts_normalized(lids_obj, bouts):
     """
@@ -606,27 +512,21 @@ def mean_of_bouts_normalized(lids_obj, bouts):
         }
         bout_info_df = bout_info_df.append(row_data, ignore_index=True)
 
+        # ^ can export the bout info df to csv here, if that is of interest.
 
         if p < 0.05 and str(lids_period) != '17.5':
             periods.append(lids_period)
             onset_phases.append(onset_phase)
             activity_data.append(extract_activity_data(bouts[i]))  # append the activity data from each bout
 
-
-    # export bout info df to csv:
-    filepath = '/Users/awashburn/Library/CloudStorage/OneDrive-BowdoinCollege/Documents/' \
-                 'Mormino-Lab-Internship/Python-Projects/Actigraphy-Testing/timeSeries-actigraphy-csv-files/bout_summary_metrics_csv/'
-    #bout_info_df.to_csv(filepath + 'bout_summary_statistics.csv')
-
     # normalize the bouts
-
     normalized_bouts_list= []
     for i in range(len(activity_data)):
         normalized_bouts_list.append(normalize_to_period(activity_data[i], periods[i], onset_phases[i]))
 
     normalized_bouts_array = np.array(normalized_bouts_list)
 
-    # plot a histogram of the periods
+    # plot a histogram of the periods - uncomment to plot.
     #hist_of_periods(periods)
 
     # define a number of bins
@@ -647,20 +547,10 @@ def mean_of_bouts_normalized(lids_obj, bouts):
         x += x_increment
     return (y_averages, confidence_intervals, len(periods))
 
-def file_data_plot(file_mean, filename):
-    plt.figure()
-    # set label for x axis
-    plt.xlabel('period')
-    # set label for y axis
-    plt.ylabel('inactivity')
-    # set title
-    plt.title(f'file {filename} mean')
-    print('about to plot (d)')
-    plt.plot(file_mean)
 
 def resample_bouts(sleep_bouts):
     """
-    Resamples the bouts to 10 minute intervals
+    Resamples the bouts to 10 minute intervals, as detailed in Winnebeck 2018
     :param sleep_bouts:  time series of sleep bouts
     :return: time series of sleep bouts resampled to 10 minute intervals
     """
@@ -670,61 +560,14 @@ def resample_bouts(sleep_bouts):
         bouts_resampled.append(resampled)
     return bouts_resampled
 
-def process_normalized(filenames):
+def process_normalized_with_confidence_intervals(filenames, label, colors):
     """
-
+    process normalized LIDS bouts, plot all of them (unbinned), add confidence intervals.
     :param filenames:
     :param label: label, for legend if applicable.
     :param colors: a list of colors, if using bins will have multiple colors.
     :return:
     """
-    all_bouts = []
-    total_bouts = 0
-    n_files = 0
-    for i in range(len(filenames)):
-
-        print('file being processed: ', i)
-        print('associated filename: ', filenames[i])
-
-
-        (all_bouts_from_file, n_bouts_in_file) = per_file_no_mean(filenames[i])
-
-        # append each bout from the file seperately to the list of ALL bouts
-        for bout in all_bouts_from_file:
-            all_bouts.append(bout)
-
-        total_bouts += n_bouts_in_file
-        n_files += 1
-
-    (activity_mean, confidence_intervals, num_bouts) = mean_of_bouts_normalized(lids_obj, all_bouts)
-    print('length activity_mean: ', len(activity_mean))
-
-    # set x axis to show LIDS periods
-    xs = np.linspace(0, MAX_PERIODS, len(activity_mean))
-
-    # Smooth the line a little bit
-    x_smooth = np.linspace(min(xs), max(xs), 300)  # Increase 300 to get a smoother line
-    spl = make_interp_spline(xs, activity_mean)
-    file_mean_smooth = spl(x_smooth)
-
-    #age_interval_index = int(label.split('-')[0].split()[-1])  # Extract age interval from label
-    # Ensure that the x-axis ticks show integers (0, 1, 2, 3, 4, ...)
-    num_ticks = MAX_PERIODS + 1 # You can adjust the number of ticks as needed
-    plt.xticks(np.linspace(0, MAX_PERIODS, num_ticks), np.arange(num_ticks))
-
-    print('about to plot (e)')
-    plt.xlabel('LIDS cycle')
-    plt.ylabel(f'Normalized Activity from {num_bouts} bouts')
-    plt.plot(x_smooth, file_mean_smooth)
-
-def process_normalized_with_confidence_intervals(filenames, label, colors):
-    """
-
-        :param filenames:
-        :param label: label, for legend if applicable.
-        :param colors: a list of colors, if using bins will have multiple colors.
-        :return:
-        """
     all_bouts = []
     total_bouts = 0
     n_files = 0
@@ -769,9 +612,8 @@ def process_normalized_with_confidence_intervals(filenames, label, colors):
     # Generate the y values for the line of best fit
     line_of_best_fit = np.polyval(coefficients, x_smooth)
 
-    # CASE FOR NON-BINNED DATA.
+    # data is not binned - this case handles that accordingly. See functions below for binned data.
     if colors == '' and label == '':
-        print('length file mean smooth: ', len(file_mean_smooth))
         for val in file_mean_smooth:
             print('val: ', val)
         plt.xlabel('LIDS cycle')
@@ -818,7 +660,7 @@ def normalized_binned_by_sex(filenames, age_sex_etiology_dict):
 
 def normalized_binned_by_age(filenames, age_sex_etiology_dict, bin_type):
     """
-
+    Get the files in each age bin.
     :param filenames:
     :param age_sex_etiology_dict:
     :param bin_type: describes which way to bin by age, when trying different binning iterations
@@ -864,7 +706,7 @@ def normalized_binned_by_age(filenames, age_sex_etiology_dict, bin_type):
 
 def normalized_binned_by_etiology(filenames, age_sex_etiology_dict):
     """
-    Generates a list of filenames for subjects of sex Male and Female, by looking them up in the demographics
+    Generates a list of filenames for subjects of Etiology HC, AD, or LB, by looking them up in the demographics
     dictionary.
     :param filenames: the list of all 166 filenames
     :param age_sex_etiology_dict: the dictionary containing sex information about all n=166 filenames
@@ -892,7 +734,12 @@ def normalized_binned_by_etiology(filenames, age_sex_etiology_dict):
     return etiology_file_list_tuple     # order of tuple is HC, AD, LB
 
 def set_up_plot_sex_binned(filenames, age_sex_etiology_dict):
-
+    """
+    Set up the normalized binned plot, by sex
+    :param filenames:
+    :param age_sex_etiology_dict:
+    :return:
+    """
     (male_filenames, female_filenames) = normalized_binned_by_sex(filenames, age_sex_etiology_dict)
     # Define the age intervals and lists
     sex_intervals = ['Male', 'Female']
@@ -1005,8 +852,6 @@ def visualize_roenneberg_sleep_bouts_transormed(filename):
         plot_bgcolor='white',  # Set background color to white
         xaxis_showgrid=False,  # Hide x-axis grid lines
         yaxis_showgrid=False  # Hide y-axis grid lines
-       # yaxis2_showgrid=False,  # Hide y-axis2 grid lines
-       # yaxis3_showgrid=False  # Hide y-axis3 grid lines
     )
 
     # retrieve onset and offset times for the sleep bouts
@@ -1040,7 +885,6 @@ def visualize_roenneberg_sleep_bouts_transormed(filename):
 
 
 
-
 ''' FUNCTION CALLS '''
 
 #### LIDS GRAPHICAL ANALYSIS ####
@@ -1048,21 +892,16 @@ directory = '/Users/awashburn/Library/CloudStorage/OneDrive-BowdoinCollege/Docum
                  'Mormino-Lab-Internship/Python-Projects/Actigraphy-Testing/timeSeries-actigraphy-csv-files/all-data-files/'
 
 filenames = [filename for filename in os.listdir(directory) if filename.endswith('timeSeries.csv.gz')]
-print('length filenames: ', len(filenames))
-# CHANGE THIS BACK - to 'timeSeries.csv.gz'
 
 # 1) for mean, non-normalized plot
-padded_bouts = set_up_plot(filenames) # FUNCTION CALL FOR NON-NORMALIZED LIDS GRAPH
-#plt.show()
+#padded_bouts = set_up_plot(filenames) # FUNCTION CALL FOR NON-NORMALIZED LIDS GRAPH
 
 # 2) outlier analysis
 #outlier_indices = box_plot_outliers(padded_bouts)
 #plot_outlier_bouts(outlier_indices, padded_bouts)
-#plt.show()
 
 # 3) for the normalized plot, all filenames
 #process_normalized_with_confidence_intervals(filenames, '', '')  # FUNCTION CALL FOR NORMALIZED LIDS GRAPH
-#plt.show()
 
 ### define the dictionary, to look up age, sex, etiology information for each user ###
 #age_sex_etiology_dict = sex_age_bins_LIDS.initialize_user_dictionary('AgeSexDx_n166_2023-07-13.csv')
@@ -1083,14 +922,13 @@ padded_bouts = set_up_plot(filenames) # FUNCTION CALL FOR NON-NORMALIZED LIDS GR
 #plt.figure()
 #set_up_plot_binned_etiology(filenames, age_sex_etiology_dict)
 
-##
+## VISUALIZATIONS OF METHODS ##
 
 ### 8) create visualization plot of raw data vs LIDS transformed data
 #visualize_roenneberg_sleep_bouts_transormed(str(filenames[5]))
 
-
-
-#plt.show()
+# show any plot we set up
+plt.show()
 
 
 
