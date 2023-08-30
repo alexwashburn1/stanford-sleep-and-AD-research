@@ -17,6 +17,7 @@ from matplotlib.colors import LinearSegmentedColormap
 from matplotlib.colors import ListedColormap
 from scipy.stats import sem
 import statistics
+from common import read_input_data
 
 # Create a LIDS object
 lids_obj = LIDS()
@@ -24,22 +25,6 @@ lids_obj = LIDS()
 # set max LIDS periods value
 MAX_PERIODS = 4
 max_x_value = MAX_PERIODS
-
-def read_input_data(filename):
-    """
-    Reads in a SINGLE cwa file for actigraphy analysis
-    :param filename: the name of the file to read in
-    :return: raw processed file
-    """
-
-    # Get the directory path of the current script or module
-    fpath = '/Users/awashburn/Library/CloudStorage/OneDrive-BowdoinCollege/Documents/' \
-                 'Mormino-Lab-Internship/Python-Projects/Actigraphy-Testing/timeSeries-actigraphy-csv-files/all-data-files/'
-
-    # actually read in the data
-    raw = pyActigraphy.io.read_raw_bba(fpath + filename, use_metadata_json=False)
-
-    return raw
 
 def LIDS_functionality_test(LIDS_obj, raw):
     """
@@ -901,7 +886,7 @@ filenames = [filename for filename in os.listdir(directory) if filename.endswith
 #plot_outlier_bouts(outlier_indices, padded_bouts)
 
 # 3) for the normalized plot, all filenames
-#process_normalized_with_confidence_intervals(filenames, '', '')  # FUNCTION CALL FOR NORMALIZED LIDS GRAPH
+process_normalized_with_confidence_intervals(filenames[1:2], '', '')  # FUNCTION CALL FOR NORMALIZED LIDS GRAPH
 
 ### define the dictionary, to look up age, sex, etiology information for each user ###
 #age_sex_etiology_dict = sex_age_bins_LIDS.initialize_user_dictionary('AgeSexDx_n166_2023-07-13.csv')
