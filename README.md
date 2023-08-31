@@ -9,7 +9,7 @@ Various parts of the project include:
 
 ## File Guide:
 ### Setting Virtual Environment
-1) common.py - read in raw actigraphy data from a directory that should be specified (!) by the user (set environment variables) <br>
+1) common.py - read in raw actigraphy data from a directory that should be specified (!) by the user (set environment variables). Set up for LIDS analysis at the moment ( <br>
    
 ### Sleep Metric Comparisons
 1) compute_and_export_metrics.py - for each unique file (corresponding to a unique subject's data), compute and export relevant sleep metrics as computed by pyActigraphy
@@ -22,7 +22,7 @@ Various parts of the project include:
 1) LIDS_analysis_new.py - a script that contains ALL of the methods for LIDS analysis. Notably, performs analysis on single files, multiple files, a mean of all files, a normalized mean of all files, and binned normalized means of all files (as outlined in Winnebeck et al. 2018)
 
 ### Day to Day Objective vs. Subjective Analysis 
-1) day_to_day_modeling.py - matches the objective and subjective sleep metrics for each unique subject and date, for analysis in R. There is lots of file manipulation to ultimately achieve the goal of a single csv file with both objective and subjective sleep metrics, for multiple days/nights, for each unique subject
+1) day_to_day_modeling.py - matches the objective and subjective sleep metrics for each unique subject and date, for analysis in R. There is lots of file manipulation to ultimately achieve the goal of a single csv file with both objective and subjective sleep metrics, for multiple days/nights, for each unique subject. *this file requires setting a personal virtual environment / filepath to the directory where all of the files are stored.* 
 
 ### Others: 
 The rest of the files are either to get aquainted with pyActigraphy, for visualizations, or works in progress.
