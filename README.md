@@ -6,5 +6,5 @@ Various directions are explored, including:
 2) Locomotor Inactivity During Sleep (LIDS) analysis, as put forward by Winnebeck et al. 2018
 3) Day-to-day Modeling of objective and subjective sleep, and differences between healthy, Alzheimer’s, and Lewy Body Subjects.
 
-##File Guide:
+## File Guide:
 
