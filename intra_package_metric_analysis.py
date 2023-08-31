@@ -18,6 +18,8 @@ def read_and_prepare_GGIR_data(filepath, GGIR_filename):
     :return: GGIR_metrics_df: a dataframe with the altered GGIR data.
     """
 
+    print('filepath: ', filepath)
+    print('filename: ', GGIR_filename)
     # read in the GGIR summary metrics data
     GGIR_metrics_df = pd.read_csv(filepath + GGIR_filename)
 
@@ -29,6 +31,7 @@ def read_and_prepare_GGIR_data(filepath, GGIR_filename):
     print('GGIR: ', GGIR_metrics_df.head())
 
     return GGIR_metrics_df
+
 
 def read_and_prepare_CRAN_data(filepath, CRAN_filename):
     """
@@ -218,6 +221,7 @@ def kRA_vs_RA(package_name, package_df):
 
 # relevant files
 # filepath, and individual filenames
+fpath = os.environ["SUMMARY_METRICS_FILES"]
 filepath = '/Users/awashburn/Library/CloudStorage/OneDrive-BowdoinCollege/Documents/' \
                  'Mormino-Lab-Internship/Python-Projects/Actigraphy-Testing/timeSeries-actigraphy-csv-files/all-data-files/summary-metrics/'
 GGIR_filename = 'GGIR_summary_n166.csv'
@@ -236,3 +240,5 @@ IS_vs_IV(package_name, package_df)
 #kRA_vs_IV(package_name, package_df)
 #kRA_vs_RA(package_name, package_df)
 
+
+'/Users/awashburn/Library/CloudStorage/OneDrive-BowdoinCollege/Documents/Mormino-Lab-Internship/Python-Projects/Actigraphy-Testing/timeSeries-actigraphy-csv-files/all-data-files/summary-metrics/'

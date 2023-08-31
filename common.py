@@ -8,12 +8,10 @@ def read_input_data(filename):
     :return: raw processed file
     """
 
-    # Get the directory path of the current script or module
-    #fpath = '/Users/awashburn/Library/CloudStorage/OneDrive-BowdoinCollege/Documents/Mormino-Lab-Internship/Python-Projects/Actigraphy-Testing/timeSeries-actigraphy-csv-files/all-data-files/'
-
+    # set a unique virtual environment
     fpath = os.environ["ACTIGRAPHY_DATA_FILES"]
 
-    # actually read in the data
+    #  read in the raw data
     raw = pyActigraphy.io.read_raw_bba(fpath + filename, use_metadata_json=False)
 
     return raw

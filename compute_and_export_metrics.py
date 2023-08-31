@@ -24,7 +24,7 @@ def read_input_data(filename):
 
 # guidelines: for now, focus on cosinor, IV/IS/RA, fragmentation (k), sleep regularity index, LIDS (potentially explore other methods)
 
-def export_metrics_to_compare(filename): #TODO - add output_dir as a parameter eventually...
+def export_metrics_to_compare(filename):
     """
     takes in a raw file for a subject, and generates a csv file with computed metrics for that subject.
     :param output_dir: the directory to write the output file to
@@ -70,7 +70,6 @@ def export_metrics_to_compare(filename): #TODO - add output_dir as a parameter e
     metrics_dict['kAR'] = kAR
 
     kRA = raw.kRA(0.01)
-    # TODO - create a histogram to determine an appropriate threshold ?
     metrics_dict['kRA'] = kRA
 
     # cosinor metrics
