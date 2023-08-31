@@ -7,4 +7,10 @@ Various directions are explored, including:
 3) Day-to-day Modeling of objective and subjective sleep, and differences between healthy, Alzheimer’s, and Lewy Body Subjects.
 
 ## File Guide:
+### Setting Virtual Environment
+1) common.py - read in raw actigraphy data from a directory that should be specified (!) by the user <br>
+   
+### Sleep metric comparisons:
+1) compute_and_export_metrics.py - for each unique file (corresponding to a unique subject's data), compute and export relevant sleep metrics as computed by pyActigraphy
+2) CRAN_vs_pyActigraphy_analysis.py - *note that CRAN represents the nPARACT package* - prepares the data for both 
 
