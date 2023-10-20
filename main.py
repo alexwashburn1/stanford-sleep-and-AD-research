@@ -16,7 +16,7 @@ def read_input_data(filename):
 
     # Get the directory path of the current script or module
     fpath = '/Users/awashburn/Library/CloudStorage/OneDrive-BowdoinCollege/Documents/' \
-                 'Mormino-Lab-Internship/Python-Projects/Actigraphy-Testing/timeSeries-actigraphy-csv-files/stanford-modified-csv/'
+                 'Mormino-Lab-Internship/Python-Projects/Actigraphy-Testing/sample_public_data/'
 
     # actually read in the data
     raw = pyActigraphy.io.read_raw_bba(fpath+filename)
@@ -144,10 +144,12 @@ def retrieve_activity_onset_offset(raw_data_file):
 
 
 '''FUNCTION CALLS'''
-# raw = read_input_data('79036_0000000504-timeSeries.csv.gz')  # change the filename here
-raw_batch = read_files_by_batch('*timeSeries.csv.gz')  # read in anything containing characters following wildcard
-print(raw_batch.IS())
-# multi_day_plot(raw, layout)
+raw = read_input_data('accsamp-timeSeries.csv.gz')  # change the filename here
+#raw_batch = read_files_by_batch('*timeSeries.csv.gz')  # read in anything containing characters following wildcard
+#print(raw_batch.IS())
+multi_day_plot(raw, layout)
+aot = raw.Roenneberg_AoT()
+print(aot)
 # daily_activity_profile(raw, layout)
 # retrieve_activity_onset_offset(raw)
 

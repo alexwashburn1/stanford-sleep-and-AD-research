@@ -9,12 +9,16 @@ def read_input_data(filename):
     """
 
     # set a unique virtual environment
-    fpath = os.environ["ACTIGRAPHY_DATA_FILES"]
+    fpath = os.environ["WINNEBECK_TEST_DATA"] # change the virtual environment, corresponding to the filepath you want
 
     #  read in the raw data
-    raw = pyActigraphy.io.read_raw_bba(fpath + filename, use_metadata_json=False)
+    raw = pyActigraphy.io.read_raw_bba(fpath + filename, frequency="10Min", use_metadata_json=False) # frequency="10Min"
 
     return raw
+
+raw = read_input_data('1.csv.gz')
+print('IS: ', raw.IS())
+print("IV: ", raw.IV())
 
 
 

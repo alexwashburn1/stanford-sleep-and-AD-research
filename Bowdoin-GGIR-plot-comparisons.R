@@ -10,8 +10,12 @@ print(load_params()$params_sleep)
 ##### LOADING THE DATA #####
 source("/Users/awashburn/Documents/Mormino-Lab-Internship/Python-Projects/Actigraphy-Testing/Bowdoin-GGIR-plot-comparisons.R")
 
-# need something like this below ? 
-GGIR(datadir="C:/Users/awashburn/Documents/Mormino-Lab-Internship/Python-Projects/Actigraphy-Testing/accsamp.cwa",
-     outputdir="D:C:/Users/awashburn/Documents/Mormino-Lab-Internship/Python-Projects/Actigraphy-Testing/myresults") # <- what file extension here??
+# analyze the actigraphy record and output it to the output directory
+GGIR(datadir="/Users/awashburn/Documents/Mormino-Lab-Internship/Python-Projects/Actigraphy-Testing/sample_public_data/accsamp.cwa",
+     outputdir="/Users/awashburn/Documents/Mormino-Lab-Internship/Python-Projects/Actigraphy-Testing/GGIR_bowdoin_output", studyname = "my_study") # <- what file extension here??
 
-# not sure where to go from here...
+setwd("/Users/awashburn/Documents/Mormino-Lab-Internship/Python-Projects/Actigraphy-Testing")
+
+data <- read.csv("sample_public_data/LIDS-sleep-bouts_database.csv")
+view(data)
+

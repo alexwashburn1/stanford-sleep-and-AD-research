@@ -162,6 +162,40 @@ def per_file_no_mean(filename):
     return (bouts, len(bouts))
 
 
+def LIDS_period_identification(filenames):
+    """
+    Return a list of the LIDS periods for given filenames
+    :param filenames:
+    :return:
+    """
+    total_bouts = 0
+    count_of_invalid_bouts = 0
+    all_bouts_all_files = []
+    bout_counts = []
+    LIDS_periods = [] # periods to return
+
+    filenames = [filenames[0]]
+    for i in range(len(filenames)):
+        print('processing file: ', i)
+        (all_bouts_from_file, n_bouts_in_file) = per_file_no_mean(filenames[i])
+        bout_counts.append(n_bouts_in_file)
+
+        for j in range(len(all_bouts_from_file)):
+            # append the bouts from each file to the total list of bouts
+            bout_with_filename = (all_bouts_from_file[j], filenames[i])
+
+            (lids_period, r, p, MRI, onset_phase, offset_phase) = cosine_fit(lids_obj, bout_with_filename[0])
+
+            if p < 0.05:  # change to "if p < 0.05" to include bouts with (potentially) invalid best-fit periods
+                all_bouts_all_files.append(bout_with_filename)
+                LIDS_periods.append(lids_period)
+            else:
+                count_of_invalid_bouts += 1
+
+        total_bouts += n_bouts_in_file
+
+    return LIDS_periods
+
 def set_up_plot(filenames):
     """
     Takes the mean over several bouts for several files. Filters all files according to the shortest record. Plots.
@@ -184,7 +218,7 @@ def set_up_plot(filenames):
 
             (lids_period, r, p, MRI, onset_phase, offset_phase) = cosine_fit(lids_obj, bout_with_filename[0])
 
-            if p < 0.05 and str(lids_period) != '17.5':     # change to "if p < 0.05" to include bouts with (potentially) invalid best-fit periods
+            if p < 0.05:     # change to "if p < 0.05" to include bouts with (potentially) invalid best-fit periods
                 all_bouts_all_files.append(bout_with_filename)
             else:
                 count_of_invalid_bouts += 1
@@ -351,6 +385,8 @@ def plot_outlier_bouts(outliers_indices, padded_bouts):
     plt.tight_layout()
 
 def cosine_fit(lids_obj, bout):
+    print('lids object: ', lids_obj)
+    print('bout: ', bout)
     """
     Fit a cosine to a raw Actigraphy bout, and return relevant metrics.
     :param lids_obj:
@@ -873,10 +909,13 @@ def visualize_roenneberg_sleep_bouts_transormed(filename):
 ''' FUNCTION CALLS '''
 
 #### LIDS GRAPHICAL ANALYSIS ####
-directory = '/Users/awashburn/Library/CloudStorage/OneDrive-BowdoinCollege/Documents/' \
-                 'Mormino-Lab-Internship/Python-Projects/Actigraphy-Testing/timeSeries-actigraphy-csv-files/all-data-files/'
+directory = os.environ.get('WINNEBECK_TEST_DATA')
 
-filenames = [filename for filename in os.listdir(directory) if filename.endswith('timeSeries.csv.gz')]
+filenames = [filename for filename in os.listdir(directory) if filename.endswith('.csv.gz')]
+
+# 0) Identifying the LIDS periods for Winnebeck data, for the histogram
+LIDS_periods = LIDS_period_identification(filenames)
+print('total periods: ', len(LIDS_periods))
 
 # 1) for mean, non-normalized plot
 #padded_bouts = set_up_plot(filenames) # FUNCTION CALL FOR NON-NORMALIZED LIDS GRAPH
@@ -886,7 +925,7 @@ filenames = [filename for filename in os.listdir(directory) if filename.endswith
 #plot_outlier_bouts(outlier_indices, padded_bouts)
 
 # 3) for the normalized plot, all filenames
-process_normalized_with_confidence_intervals(filenames[1:2], '', '')  # FUNCTION CALL FOR NORMALIZED LIDS GRAPH
+#process_normalized_with_confidence_intervals(filenames[1:2], '', '')  # FUNCTION CALL FOR NORMALIZED LIDS GRAPH
 
 ### define the dictionary, to look up age, sex, etiology information for each user ###
 #age_sex_etiology_dict = sex_age_bins_LIDS.initialize_user_dictionary('AgeSexDx_n166_2023-07-13.csv')
