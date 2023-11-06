@@ -17,5 +17,10 @@ GGIR(datadir="/Users/awashburn/Documents/Mormino-Lab-Internship/Python-Projects/
 setwd("/Users/awashburn/Documents/Mormino-Lab-Internship/Python-Projects/Actigraphy-Testing")
 
 data <- read.csv("sample_public_data/LIDS-sleep-bouts_database.csv")
-view(data)
+View(data)
+
+# try sorting the data in ascending order
+sorted_data <- data[order(data$ID), ]
+View(sorted_data)
+
 

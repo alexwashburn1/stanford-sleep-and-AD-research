@@ -17,6 +17,10 @@ install.packages("ggcorrplot")
 library(ggcorrplot)
 install.packages("GGally")
 library(GGally)
+install.packages("lavaan")
+library(lavaan)
+install.packages("semPlot")
+library(semPlot)
 
 
 ##### READ IN DATA #####
@@ -135,6 +139,7 @@ ggplot(unique_filtered_data, aes(x = Etiology, y = slopes, color = factor(Etiolo
 
 
 ##### PLOT BOX PLOT OF BASELINE MEASURES ##### 
+
 # filter unique_filtered_data so it has a mean value for WASO for EACH USER
 # Group by 'Study.ID' and calculate the mean of 'WASO'
 df_one_mean_subj_per_ID <- obj_v_subj_dt_3 %>%
@@ -224,6 +229,26 @@ ggplot(mean_data_long, aes(x = SubjectiveMeasure, y = MeanValue, fill = factor(G
  
 out_of_range_rows <- which(mean_data_long$MeanValue < 1 | mean_data_long$MeanValue > 5)
 print(mean_data_long[out_of_range_rows, ])
+
+
+########## CONFIRMATORY FACTOR ANALYSIS ##########
+# set up model
+CFA.model <- 'subjective sleep quality  =~ Mentally.Alert + Deep.Sleep + Overall.quality + Well.rested'
+
+# remove any missing data from obj_v_subj_dt 
+
+
+# fit model to our data
+fit <- cfa(CFA.model, data = obj_v_subj_dt)
+
+# view the summary of the model
+summary(fit, fit.measures = TRUE, standardized = T)
+
+semPaths(fit, "std", edge.label.cex = 0.5, curvePivot = TRUE)
+
+# add this as column (remove na's from dt first)
+obj_v_subj_dt$latent_variable <- predict(fit)
+
 
 
 

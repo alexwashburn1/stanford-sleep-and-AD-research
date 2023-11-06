@@ -12,11 +12,12 @@ import os
 #fpath = './data/mendeley/'
 fpath = os.environ.get('FILE_PATH')
 filename = 'LIDS-sleep-bouts_database.csv'
-output_path = fpath + 'converted/'
+output_path = fpath + 'converted_no_children_quilombola/'
 first_day_str = '2023-10-14 00:00:00' # make up a date, since the data doesn't have one
 first_day = pd.to_datetime(first_day_str)
 day = first_day
-
+base_time = first_day
+absolute_time = base_time
 # create output path if it doesn't exist
 import os
 if not os.path.exists(output_path):
@@ -28,6 +29,13 @@ mendeley_df = pd.read_csv(fpath + filename)
 
 # list the columns
 print(mendeley_df.columns)
+
+#mendeley_df.loc[mendeley_df["Group"] != "Children"]
+#mendeley_df.loc[mendeley_df["Group"] != "Quilombola"]
+
+for i in range(3000, 5000):
+    print(mendeley_df["Group"][i])
+
 
 # form dataframe with only the columns we want
 
@@ -54,7 +62,7 @@ def convert_LIDS_to_activity(LIDS_raw):
     :return: activity_count
     """
     if pd.isna(LIDS_raw) == True:
-        return 0
+        return -1.0
     else:
         activity_count = 100.0/LIDS_raw - 1
         return activity_count
@@ -66,21 +74,23 @@ def convert_offset_minutes_to_absolute_time(offset_minutes):
     :return: absolute_time
     """
 
-    global day
+    global absolute_time, base_time
+    #print("absolute_time start", absolute_time)
 
     # convert to seconds
     seconds = int(offset_minutes) * 60
     # add to start time
     if seconds == 0: # whenever we see offset == 0, add 1 day. to make more realistic time series for a person over several days
-        day = day + pd.to_timedelta(1, unit='D')
-    absolute_time = day + pd.to_timedelta(seconds, unit='s')
+        base_time = absolute_time
+    absolute_time = base_time + pd.to_timedelta(seconds, unit='s')
+    #print("absolute_time end ", absolute_time)
     # convert to string in iso format
     return absolute_time
 
 # convert data column in dataframe - apply conversion to every data value in LIDS raw column
 mendeley_df['LIDS.raw'] = mendeley_df['LIDS.raw'].apply(convert_LIDS_to_activity)
-
-# fill all the NA values in the raw data column with 0.0 placeholders
+# get rid of 0's
+mendeley_df = mendeley_df[mendeley_df['LIDS.raw'] != -1.0]
 
 # rename the column to 'acc'
 mendeley_df.rename(columns={'LIDS.raw': 'acc'}, inplace=True)

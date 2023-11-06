@@ -16,9 +16,9 @@ def read_input_data(filename):
 
     return raw
 
-raw = read_input_data('1.csv.gz')
-print('IS: ', raw.IS())
-print("IV: ", raw.IV())
+#raw = read_input_data('1.csv.gz')
+#print('IS: ', raw.IS())
+#print("IV: ", raw.IV())
 
 
 

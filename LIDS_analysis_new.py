@@ -18,6 +18,9 @@ from matplotlib.colors import ListedColormap
 from scipy.stats import sem
 import statistics
 from common import read_input_data
+import warnings
+
+warnings.simplefilter('always') # for nan warning - Winnebeck data
 
 # Create a LIDS object
 lids_obj = LIDS()
@@ -174,10 +177,18 @@ def LIDS_period_identification(filenames):
     bout_counts = []
     LIDS_periods = [] # periods to return
 
-    filenames = [filenames[0]]
     for i in range(len(filenames)):
         print('processing file: ', i)
-        (all_bouts_from_file, n_bouts_in_file) = per_file_no_mean(filenames[i])
+        print('filename: ', filenames[i])
+
+        # catch temporarily invalid files here
+        try:
+            (all_bouts_from_file, n_bouts_in_file) = per_file_no_mean(filenames[i])
+        except ValueError:
+            continue
+        except IndexError:
+            continue
+
         bout_counts.append(n_bouts_in_file)
 
         for j in range(len(all_bouts_from_file)):
@@ -912,10 +923,30 @@ def visualize_roenneberg_sleep_bouts_transormed(filename):
 directory = os.environ.get('WINNEBECK_TEST_DATA')
 
 filenames = [filename for filename in os.listdir(directory) if filename.endswith('.csv.gz')]
+filenames.sort()
+
+# Winnebeck debug - exclude certain files that are giving errors
+#filenames.remove("491.csv.gz")
+#filenames.remove("250.csv.gz")
+#filenames.remove("7.csv.gz")
+#filenames.remove("196.csv.gz")
+#filenames.remove("274.csv.gz")
+#filenames.remove("378.csv.gz")
+#filenames.remove("503.csv.gz")
+#filenames.remove("556.csv.gz")
+#filenames.remove("307.csv.gz")
+#filenames.remove("535.csv.gz")
+#filenames.remove("376.csv.gz")
+#filenames.remove("57.csv.gz")
+
+#filenames = filenames[0:98] # temporary slice, have not excluded all invalid files
+
 
 # 0) Identifying the LIDS periods for Winnebeck data, for the histogram
 LIDS_periods = LIDS_period_identification(filenames)
-print('total periods: ', len(LIDS_periods))
+
+# plot the histogram
+hist_of_periods(LIDS_periods)
 
 # 1) for mean, non-normalized plot
 #padded_bouts = set_up_plot(filenames) # FUNCTION CALL FOR NON-NORMALIZED LIDS GRAPH
