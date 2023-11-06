@@ -396,8 +396,7 @@ def plot_outlier_bouts(outliers_indices, padded_bouts):
     plt.tight_layout()
 
 def cosine_fit(lids_obj, bout):
-    print('lids object: ', lids_obj)
-    print('bout: ', bout)
+
     """
     Fit a cosine to a raw Actigraphy bout, and return relevant metrics.
     :param lids_obj:

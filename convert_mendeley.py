@@ -12,7 +12,7 @@ import os
 #fpath = './data/mendeley/'
 fpath = os.environ.get('FILE_PATH')
 filename = 'LIDS-sleep-bouts_database.csv'
-output_path = fpath + 'converted_no_children_quilombola/'
+output_path = fpath + 'converted/'
 first_day_str = '2023-10-14 00:00:00' # make up a date, since the data doesn't have one
 first_day = pd.to_datetime(first_day_str)
 day = first_day
@@ -30,12 +30,9 @@ mendeley_df = pd.read_csv(fpath + filename)
 # list the columns
 print(mendeley_df.columns)
 
+# experiment filtering out certain groups
 #mendeley_df.loc[mendeley_df["Group"] != "Children"]
 #mendeley_df.loc[mendeley_df["Group"] != "Quilombola"]
-
-for i in range(3000, 5000):
-    print(mendeley_df["Group"][i])
-
 
 # form dataframe with only the columns we want
 
