@@ -11,7 +11,7 @@ def import_data(subjective_data_filename_all, subjective_data_filename_1, subjec
                 objective_data_filename, diagnosis_data_filename, import_directory):
     """
     Read in csv files, and convert them to dataframes for data graphing.
-    :param subjective_data_filename: the objective sleep data from REDCAP sleep questionnaires. 1/2 -> RECAP files.
+    :param subjective_data_filename: the subjective sleep data from REDCAP sleep questionnaires. 1/2 -> RECAP files.
     :param objective_data_filename: the objective sleep data, from GGIR.
     :param diagnosis_data_filename: the file describing diagnosis and sex information.
     :return: subjective_sleep_df, objective_sleep_df, diagnosis_data : a tuple containing the three values respectively.
@@ -115,8 +115,10 @@ def merge_objective_subjective_files(subjective_sleep_df_all_fixed, objective_sl
     """
 
     # reformat the date for subjective sleep df
-    subjective_sleep_df_all_fixed['Date'] = pd.to_datetime(subjective_sleep_df_all_fixed['Date'], format='%m/%d/%y',
-                                                         errors='coerce')
+    # date format from NEW data update june 25 2024: 2021-08-29
+    # date format from PREVIOUS data: 8/29/21
+    subjective_sleep_df_all_fixed['Date'] = pd.to_datetime(subjective_sleep_df_all_fixed['Date'], format='%Y-%m-%d',
+                                                         ) # errors = 'coerce'
 
     subjective_sleep_df_all_fixed['Date'] = subjective_sleep_df_all_fixed['Date'].dt.strftime('%m/%d/%y')
 
@@ -196,14 +198,15 @@ def plot_obj_vs_subjective_unbinned(merged_df, subj_x_value, obj_y_value, color,
 
 
 '''FUNCTION CALLS'''
-subjective_data_filename_all = 'ActigraphyDatabase-FullSleepLogs_DATA_LABELS_2023-07-24_1554.csv'
-subjective_data_filename_1 = 'Full_Sleep_Logs_July2023.csv'
-subjective_data_filename_2 = 'Sleep_Questionnaire_Data_Entry_July2023_REDCAP_fixed.csv'
-objective_data_filename = 'part4_nightsummary_sleep_cleaned.csv'
-diagnosis_data_filename = 'AgeSexDx_n166_2023-08-08.csv'
+subjective_data_filename_all = 'ActigraphyDatabase-FullSleepLogs_DATA_LABELS_2024-06-20_1036.csv'
+subjective_data_filename_1 = 'ActigraphyDatabase-FullSleepLogs_DATA_LABELS_2024-06-20_1036.csv' # not in use
+subjective_data_filename_2 = 'ActigraphyDatabase-FullSleepLogs_DATA_LABELS_2024-06-20_1036.csv' # not in use
+objective_data_filename = 'part4_nightsummary_sleep_cleaned_June2024.csv'
+diagnosis_data_filename = 'AgeSexDx_n183_2024-06-20.csv'
 
 # create virtual environment
-import_directory = os.environ["DAY_TO_DAY_MODELING_FILES"] # set virtual environment here
+# import_directory = os.environ["DAY_TO_DAY_MODELING_FILES"] # set virtual environment here
+import_directory = '/Users/awashburn/Documents/Mormino-Lab-Internship/Python-Projects/Actigraphy-Testing/day-to-day-modeling-files-updated-data/'
 
 # extract dataframes in a tuple
 (subjective_sleep_df_all, subjective_sleep_df_July_2023, subjective_sleep_df_REDCAP_fixed,
@@ -217,7 +220,6 @@ subjective_sleep_df_all_fixed = subjective_long_add_filename(subjective_sleep_df
 objective_sleep_df_fixed = reformat_date_european_to_american_objective(objective_sleep_df, filepath)
 merged_df = merge_objective_subjective_files(subjective_sleep_df_all_fixed, objective_sleep_df_fixed)
 merged_df_final = merged_objsubj_agesexetiology(merged_df, diagnosis_data_df)
-
 
 
 
