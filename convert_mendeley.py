@@ -5,19 +5,26 @@ import shutil
 
 import pandas as pd
 import os
+import debug_utils
 
 
 # make these paramters env variables TODO
 # define the filepath
 #fpath = './data/mendeley/'
 fpath = os.environ.get('FILE_PATH')
-filename = 'LIDS-sleep-bouts_database.csv'
+
+#filename = 'LIDS-sleep-bouts_database.csv'
+filename = os.environ.get('FILE_NAME')
 output_path = fpath + 'converted/'
+if 'OUTPUT_SUBDIR' in os.environ:
+    output_path =  output_path + os.environ.get('OUTPUT_SUBDIR')
 first_day_str = '2023-10-14 00:00:00' # make up a date, since the data doesn't have one
 first_day = pd.to_datetime(first_day_str)
-day = first_day
 base_time = first_day
 absolute_time = base_time
+
+winnebeck_format = os.environ.get('WINNEBECK_FORMAT') is not None
+
 # create output path if it doesn't exist
 import os
 if not os.path.exists(output_path):
@@ -30,15 +37,16 @@ mendeley_df = pd.read_csv(fpath + filename)
 # list the columns
 print(mendeley_df.columns)
 
-# experiment filtering out certain groups
-#mendeley_df.loc[mendeley_df["Group"] != "Children"]
-#mendeley_df.loc[mendeley_df["Group"] != "Quilombola"]
+n_IDs_bouts = debug_utils.count_Ids_bouts_mendeley(mendeley_df)
+print(f"n_IDs_bouts: {n_IDs_bouts}")
 
 # form dataframe with only the columns we want
 
 # define the columns we want
 
 columns_needed = ['ID', 'TimeSinceOnset_min', 'LIDS.raw']
+if winnebeck_format:
+    columns_needed.append('BoutNo')
 
 mendeley_df = mendeley_df[columns_needed]
 
@@ -72,22 +80,25 @@ def convert_offset_minutes_to_absolute_time(offset_minutes):
     """
 
     global absolute_time, base_time
-    #print("absolute_time start", absolute_time)
+
+    #print("absolute_time start ", absolute_time)
 
     # convert to seconds
     seconds = int(offset_minutes) * 60
-    # add to start time
-    if seconds == 0: # whenever we see offset == 0, add 1 day. to make more realistic time series for a person over several days
+
+    if seconds == 0:
         base_time = absolute_time
-    absolute_time = base_time + pd.to_timedelta(seconds, unit='s')
+    absolute_time =  base_time + pd.to_timedelta(seconds, unit='s')
     #print("absolute_time end ", absolute_time)
+
     # convert to string in iso format
     return absolute_time
 
 # convert data column in dataframe - apply conversion to every data value in LIDS raw column
 mendeley_df['LIDS.raw'] = mendeley_df['LIDS.raw'].apply(convert_LIDS_to_activity)
-# get rid of 0's
 mendeley_df = mendeley_df[mendeley_df['LIDS.raw'] != -1.0]
+
+# fill all the NA values in the raw data column with 0.0 placeholders
 
 # rename the column to 'acc'
 mendeley_df.rename(columns={'LIDS.raw': 'acc'}, inplace=True)
@@ -120,6 +131,10 @@ mendeley_df.insert(col_index, 'sleep', 0.0)
 col_index = col_index + 1
 mendeley_df.insert(col_index, 'MET', 0.0)
 
+if winnebeck_format == True:
+    winnebeck_str = 'winnebeck'
+else:
+    winnebeck_str = ''
 
 # Iterate to export a unique CSV file for each user ID
 for ID in unique_IDs:
@@ -131,12 +146,13 @@ for ID in unique_IDs:
     # remove the ID column: to get appropriate raw data format (excluding ID column)
     ID_df = ID_df.drop(columns=['ID'])
     # save the data to a csv file
-    ID_df.to_csv(output_path + str(ID) + '.csv', index=False)
+    ID_df.to_csv(output_path + winnebeck_str + str(ID)  + '.csv', index=False)
 
     # compress files
-    with open(output_path + str(ID) + '.csv', 'rb') as f_in:
-        with gzip.open(output_path + str(ID) + '.csv.gz', 'wb') as f_out:
+    with open(output_path + winnebeck_str  + str(ID) + '.csv', 'rb') as f_in:
+        with gzip.open(output_path + winnebeck_str  + str(ID) + '.csv.gz', 'wb') as f_out:
             shutil.copyfileobj(f_in, f_out)
+
 
 
 

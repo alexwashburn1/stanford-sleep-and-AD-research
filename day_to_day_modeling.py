@@ -33,6 +33,43 @@ def import_data(subjective_data_filename_all, subjective_data_filename_1, subjec
     return (subjective_sleep_df_all, subjective_sleep_df_July_2023, subjective_sleep_df_REDCAP_fixed,
     objective_sleep_df, diagnosis_data_df)
 
+# add filename to each row in the dataframe where it is missing, with a dataframe with all rows from a single subject ID
+def add_filename_per_subject_id(subject_id_df):
+    # sort each group by the 'Repeat Instrument' column
+    subject_id_df.sort_values('Repeat Instrument',  ascending=False, inplace=True)
+
+    # filter rows that have a filename
+    filename_rows = subject_id_df[subject_id_df['File Name'].notna()]
+    n_filename_rows = len(filename_rows)
+    # filter rows that have column 'Repeat Instrument' with value 'Daily Logs'
+    daily_log_rows = subject_id_df[subject_id_df['Repeat Instrument'] == 'Daily Logs']
+    if len(daily_log_rows) == 0:
+        # if there are no daily log rows, return the dataframe unchanged
+        return subject_id_df
+
+    # separate the daily log rows into categories where values in 'Date' column are at least 1 month apart
+    initial_date = daily_log_rows['Date'].iloc[0]
+    # convert to datetime
+    date_cursor = pd.to_datetime(initial_date, format='%m/%d/%y', errors='raise')
+    # iterate over the rows in the daily log rows dataframe
+    filename_row_index = 0
+    for index, row in daily_log_rows.iterrows():
+        # convert the date to datetime
+        current_date = pd.to_datetime(row['Date'], format='%m/%d/%y', errors='raise')
+        # check if the current date is after the date cursor
+        if current_date < date_cursor:
+            # if the current date is before the date cursor, skip this row (data is not in order), due to data entry error
+            continue
+        # check if the difference between the two dates is at least 30 days
+        if (current_date - date_cursor).days >= 30:
+            # get the next filename
+            filename_row_index += 1
+        subject_id_df.loc[index, 'File Name'] = filename_rows['File Name'].iloc[filename_row_index]
+        date_cursor = current_date
+        assert filename_row_index < n_filename_rows, "Filename index out of range. Check the number of filenames available."
+
+    return  subject_id_df
+
 def subjective_long_add_filename(subjective_sleep_df_all, filepath):
     """
     Add the filename to each row in the long format data table, so things can be matched with objective sleep data
@@ -40,6 +77,22 @@ def subjective_long_add_filename(subjective_sleep_df_all, filepath):
     :param subjective_data_filename_all: the file containing subjective sleep metrics for all data.
     :return:
     """
+
+    # add a row index column to the dataframe
+    subjective_sleep_df_all['row_index'] = subjective_sleep_df_all.index
+    # this is to help ensure that the rows are processed in the same order as in the original dataframe
+
+    subject_id_dfs = dict(tuple(subjective_sleep_df_all.groupby(['Study ID'])))
+    # create a dictionary of dataframes, one for each study ID
+    # iterate over the dictionary and sort each dataframe by 'Repeat Instrument'
+    for study_id, subject_id_df in subject_id_dfs.items():
+        subject_id_df = add_filename_per_subject_id(subject_id_df)
+        subject_id_dfs[study_id] = subject_id_df
+    # convert the dictionary back to a single dataframe
+    subjective_sleep_df_all = pd.concat(subject_id_dfs.values(), ignore_index=True)
+
+    print(subjective_sleep_df_all)
+
 
     #1) keep iterating over rows, until a row is found that has a value for the filename
     for index, row in subjective_sleep_df_all.iterrows():
@@ -117,7 +170,7 @@ def merge_objective_subjective_files(subjective_sleep_df_all_fixed, objective_sl
     # reformat the date for subjective sleep df
     # date format from NEW data update june 25 2024: 2021-08-29
     # date format from PREVIOUS data: 8/29/21
-    subjective_sleep_df_all_fixed['Date'] = pd.to_datetime(subjective_sleep_df_all_fixed['Date'], format='%Y-%m-%d',
+    subjective_sleep_df_all_fixed['Date'] = pd.to_datetime(subjective_sleep_df_all_fixed['Date'], format='%m/%d/%y',
                                                          ) # errors = 'coerce'
 
     subjective_sleep_df_all_fixed['Date'] = subjective_sleep_df_all_fixed['Date'].dt.strftime('%m/%d/%y')
@@ -128,7 +181,7 @@ def merge_objective_subjective_files(subjective_sleep_df_all_fixed, objective_sl
     # add a sleep efficiency column
     merged_df['sleep_efficiency'] = merged_df['SleepDurationInSpt'] / merged_df['SptDuration']
 
-    #merged_df.to_csv(filepath + 'objective_subjective_merged.csv', index=False)
+    merged_df.to_csv(filepath + 'objective_subjective_merged_6-20-2025.csv', index=False)
 
     return merged_df
 
@@ -202,11 +255,11 @@ subjective_data_filename_all = 'ActigraphyDatabase-FullSleepLogs_DATA_LABELS_202
 subjective_data_filename_1 = 'ActigraphyDatabase-FullSleepLogs_DATA_LABELS_2024-06-20_1036.csv' # not in use
 subjective_data_filename_2 = 'ActigraphyDatabase-FullSleepLogs_DATA_LABELS_2024-06-20_1036.csv' # not in use
 objective_data_filename = 'part4_nightsummary_sleep_cleaned_June2024.csv'
-diagnosis_data_filename = 'AgeSexDx_n183_2024-06-20.csv'
+diagnosis_data_filename = 'n196_combined_demographics_data_05-03-2025.csv'
 
 # create virtual environment
 # import_directory = os.environ["DAY_TO_DAY_MODELING_FILES"] # set virtual environment here
-import_directory = '/Users/awashburn/Documents/Mormino-Lab-Internship/Python-Projects/Actigraphy-Testing/day-to-day-modeling-files-updated-data/'
+import_directory = './day-to-day-modeling-files-updated-data/'
 
 # extract dataframes in a tuple
 (subjective_sleep_df_all, subjective_sleep_df_July_2023, subjective_sleep_df_REDCAP_fixed,
@@ -220,6 +273,55 @@ subjective_sleep_df_all_fixed = subjective_long_add_filename(subjective_sleep_df
 objective_sleep_df_fixed = reformat_date_european_to_american_objective(objective_sleep_df, filepath)
 merged_df = merge_objective_subjective_files(subjective_sleep_df_all_fixed, objective_sleep_df_fixed)
 merged_df_final = merged_objsubj_agesexetiology(merged_df, diagnosis_data_df)
+
+print('unique file names in subjective df: ')
+subjective_data_df = pd.read_csv(import_directory + subjective_data_filename_all)
+print(subjective_data_df['File Name'].nunique())
+
+print('unique file names in objective df: ')
+objective_data_df = pd.read_csv(import_directory + objective_data_filename)
+print(objective_data_df['ID'].nunique())
+
+print('unique file names in final (merged) df: ')
+print(merged_df_final['File Name'].nunique())
+
+print("TESTING SOMETHING")
+
+# Load data
+subjective_data_df = pd.read_csv(import_directory + subjective_data_filename_all)
+objective_data_df = pd.read_csv(import_directory + objective_data_filename)
+
+# Remove '.cwa' extension from subjective file names
+subjective_files = set(subjective_data_df['File Name'].str.replace('.cwa', '', regex=False).unique())
+objective_files = set(objective_data_df['ID'].unique())
+
+# Find file names in objective but not in subjective
+objective_not_in_subjective = objective_files - subjective_files
+
+# Print the result
+print("File names in objective data but NOT in subjective data:")
+for file_name in sorted(objective_not_in_subjective):
+    print(file_name)
+
+print(f"\nTotal: {len(objective_not_in_subjective)} files")
+
+# Normalize the file names
+subjective_files = set(subjective_data_df['File Name'].str.replace('.cwa', '', regex=False).unique())
+objective_files = set(objective_data_df['ID'].unique())
+
+# Find intersection (i.e., common file names)
+files_in_both_obj_and_subj = subjective_files & objective_files
+
+# Print count
+print(f"Number of file names in BOTH objective and subjective data: {len(files_in_both_obj_and_subj)}")
+
+# print the files that are present in both obj / subj file not not in the merged file
+set_of_unique_merged_files = set(merged_df_final['File Name'].str.replace('.cwa', '', regex=False).unique())
+print("files that are in both obj/subj but NOT in the merged final file: ")
+print(files_in_both_obj_and_subj - set_of_unique_merged_files)
+
+
+
 
 
 

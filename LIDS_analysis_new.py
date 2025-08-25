@@ -19,6 +19,7 @@ from scipy.stats import sem
 import statistics
 from common import read_input_data
 import warnings
+import debug_utils
 
 warnings.simplefilter('always') # for nan warning - Winnebeck data
 
@@ -119,6 +120,10 @@ def find_bouts(lids_obj, raw):
     """
     (wakes, sleeps) = raw.Roenneberg_AoT()
 
+
+    for index, sleep in enumerate(sleeps):
+        print('sleep: ', sleep, 'wake: ', wakes[index])
+
     if helper_unequal_sleep_wakes(lids_obj, raw, wakes, sleeps) == True:
             # check if there is an extra wake value at the beginning
         if wakes[0] < sleeps[0]:
@@ -134,6 +139,7 @@ def find_bouts(lids_obj, raw):
     for i in range(len(sleep_wakes)):
         sleep_bouts.append(extract_bout(raw.data, sleep_wakes[i][0], sleep_wakes[i][1])) # sleep_wakes[i]
 
+    # TODO we also need to do the following for Winnebeck's method:
     sleep_bouts_filtered = lids_obj.filter(ts=sleep_bouts, duration_min='3H', duration_max='12H')
 
     # resample/downscale the sleep bouts to have 10 minute bins
@@ -152,18 +158,54 @@ def find_bouts(lids_obj, raw):
 
     return bouts_transformed
 
+fpath = os.environ["WINNEBECK_TEST_DATA"]
 
 def per_file_no_mean(filename):
     """
-    process each file and do not return one mean bout, but a list of all of the bouts
+    process each file and do not return one mean bout, but a list of all of the bouts.
+    this function depends on whether the data being processed is Winnebeck data, or Stanford.
     :param filename: the file to generate a list of bouts for.
     :return: a list of all of the bouts in the file, and the number of bouts in the file.
     """
-    raw = read_input_data(filename)
-    bouts = find_bouts(lids_obj, raw)
+    # TODO read in file check file format (look for bout_number)
+    df = pd.read_csv(fpath + filename)
+    columns_needed = ['time', 'acc']
+    bout_number = 'BoutNo'
+    if bout_number in df.columns:  # the file format is Winnebeck
+        bouts = []
+        boutnums = df['BoutNo'].unique()
+        for boutnum in boutnums:
+            # extract the bout
+            df_bout = df[df['BoutNo'] == boutnum]
+            df_bout = df_bout[columns_needed]
+            # convert to Series
+            time_list = pd.Series(df_bout['time']).to_list()
+            # convert to TimeStamp
+            time_list = pd.to_datetime(time_list)
+            acc_list = pd.Series(df_bout['acc']).to_list()
+            bout_series = pd.Series(index=time_list, data=acc_list)
+            bouts.append(bout_series)
 
-    return (bouts, len(bouts))
+        bouts_transformed = []
 
+        # check if this is Stanford data or Winnebeck data
+        if 'MAX_FILES' in os.environ:
+            #it is Winnebeck data - do not smooth the data
+            smooth_method = 'none'
+        else:
+            # Stanford data
+            smooth_method = 'mva'
+        for i in range(len(bouts)):
+            bouts_transformed.append(lids_obj.lids_transform(ts=bouts[i], resampling_freq='10min', method=smooth_method)) # delete the method function
+        return (bouts_transformed, len(bouts_transformed))
+
+    else:  # Stanford format
+        rawBBA = read_input_data(filename)
+        bouts = find_bouts(lids_obj, rawBBA)
+        return (bouts, len(bouts))
+
+# note: need to reference this file path below, putting fpath variable here
+fpath = os.environ["WINNEBECK_TEST_DATA"]
 
 def LIDS_period_identification(filenames):
     """
@@ -177,11 +219,17 @@ def LIDS_period_identification(filenames):
     bout_counts = []
     LIDS_periods = [] # periods to return
 
+    file_number = 0
     for i in range(len(filenames)):
         print('processing file: ', i)
         print('filename: ', filenames[i])
+        file_number += 1
 
-        # catch temporarily invalid files here
+        if 'MAX_FILES' in os.environ:
+            if file_number > int(os.environ['MAX_FILES']):
+                break
+
+        # catch invalid files here
         try:
             (all_bouts_from_file, n_bouts_in_file) = per_file_no_mean(filenames[i])
         except ValueError:
@@ -197,7 +245,7 @@ def LIDS_period_identification(filenames):
 
             (lids_period, r, p, MRI, onset_phase, offset_phase) = cosine_fit(lids_obj, bout_with_filename[0])
 
-            if p < 0.05:  # change to "if p < 0.05" to include bouts with (potentially) invalid best-fit periods
+            if p < 0.05:
                 all_bouts_all_files.append(bout_with_filename)
                 LIDS_periods.append(lids_period)
             else:
@@ -923,23 +971,6 @@ directory = os.environ.get('WINNEBECK_TEST_DATA')
 
 filenames = [filename for filename in os.listdir(directory) if filename.endswith('.csv.gz')]
 filenames.sort()
-
-# Winnebeck debug - exclude certain files that are giving errors
-#filenames.remove("491.csv.gz")
-#filenames.remove("250.csv.gz")
-#filenames.remove("7.csv.gz")
-#filenames.remove("196.csv.gz")
-#filenames.remove("274.csv.gz")
-#filenames.remove("378.csv.gz")
-#filenames.remove("503.csv.gz")
-#filenames.remove("556.csv.gz")
-#filenames.remove("307.csv.gz")
-#filenames.remove("535.csv.gz")
-#filenames.remove("376.csv.gz")
-#filenames.remove("57.csv.gz")
-
-#filenames = filenames[0:98] # temporary slice, have not excluded all invalid files
-
 
 # 0) Identifying the LIDS periods for Winnebeck data, for the histogram
 LIDS_periods = LIDS_period_identification(filenames)

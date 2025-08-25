@@ -23,17 +23,78 @@ install.packages("semPlot")
 library(semPlot)
 
 
-##### READ IN DATA #####
-setwd("/Users/awashburn/Library/CloudStorage/OneDrive-BowdoinCollege/Documents/Mormino-Lab-Internship/Python-Projects/Actigraphy-Testing/day-to-day-modeling-files/")
 
-obj_v_subj_dt <- read.csv("objective_subjective_merged_with_severity.csv", header = TRUE)
+##### READ IN DATA #####
+### SET WORKING DIRECTORY TO NEW DATA OR OLD DATA, DEPENDING ON WHICH DATA YOU WANT TO UPDATE ###
+old_data_directory = "/Users/awashburn/Library/CloudStorage/OneDrive-BowdoinCollege/Documents/Mormino-Lab-Internship/Python-Projects/Actigraphy-Testing/day-to-day-modeling-files/"
+updated_data_directory = "/Users/awashburn/Library/CloudStorage/OneDrive-BowdoinCollege/Documents/Mormino-Lab-Internship/Python-Projects/Actigraphy-Testing/day-to-day-modeling-files-updated-data/"
+
+setwd(updated_data_directory)
+
+obj_v_subj_dt <- read.csv("MASTER_obj_subj_file_MASTER_filled_FINAL.csv", header = TRUE)
+
+
+##############################################################################
 
 ##### SET UP LMM #####
 
-# filter out etiology = other rows. Only use this df if you are doing etiology analysis. 
-obj_v_subj_dt_3 <- subset(obj_v_subj_dt, Etiology != "Other")
+########## CONFIRMATORY FACTOR ANALYSIS ##########
+# set up model
+CFA.model <- 'subjective sleep quality  =~ Mentally.Alert + Deep.Sleep + Overall.quality + Well.rested'
 
-# impairment grouping
+# fit model to our data
+fit <- cfa(CFA.model, data = obj_v_subj_dt)
+
+# view the summary of the model
+summary(fit, fit.measures = TRUE, standardized = T)
+
+semPaths(fit, "std", edge.label.cex = 0.9, curvePivot = TRUE, sizeLat = 14, sizeLat2 = 14,
+         nodeLabels = c("Mentally alert", "Deep sleep", "Overall quality", "Well rested", "Subj. sleep quality"), 
+         label.cex = 1.2, 
+         sizeMan = 10, 
+         )
+
+
+
+## remove NA values - DONT RUN THIS, DATA SHOULD NOT HAVE ANY NAs RIGHT NOW ##
+
+# find rows with NA values
+# Specify the columns to check for NAs
+#columns_to_check <- c("Mentally.Alert", "Deep.Sleep", "Overall.quality", "Well.rested")
+
+# Find rows with NAs in the specified columns and print the indices
+#na_indices <- which(rowSums(is.na(obj_v_subj_dt[columns_to_check])) > 0)
+
+# Print the indices
+#print(na_indices)
+
+# Create an index of rows to remove
+#rows_to_remove <- na_indices
+
+# remove rows
+#filtered_data <- obj_v_subj_dt[-rows_to_remove, ]
+#rownames(filtered_data) <- NULL # make sure rows are in sequential order
+#obj_v_subj_dt <- filtered_data
+
+# add this as column (remove na's from dt first)
+temp <- predict(fit)
+obj_v_subj_dt$latent_variable <- temp
+
+### TEMP filter out all values with WASO > 4 hours (considered extraneous) - DONT ALWAYS RUN THIS ### 
+filtered_data <- obj_v_subj_dt %>% 
+  filter(WASO <= 4)
+
+num_filtered <- nrow(obj_v_subj_dt) - nrow(filtered_data)
+
+print(paste("Number of values with WASO > 4:", num_filtered))
+
+obj_v_subj_dt <- filtered_data
+
+# Etiology cleaning
+obj_v_subj_dt$Etiology <- factor(obj_v_subj_dt$Etiology, levels= c("HC", "AD", "LB"))
+obj_v_subj_dt <- subset(obj_v_subj_dt, Etiology != "Other")
+
+# impairment grouping/cleaning
 obj_v_subj_dt$Impaired <- factor(obj_v_subj_dt$Impaired, levels = c("Normal", "MCI", "Dementia"))
 
 # mutate obj_v_subj_dt to add MoCA bins
@@ -45,15 +106,38 @@ obj_v_subj_dt <- obj_v_subj_dt %>%
     TRUE ~ "unknown"  # Handling any other cases not covered by the conditions
   ))
 
-# make sure that high MoCA is the default for regression comparisons
+# make sure that high MoCA is the default for regression comparisons: cleaning
 obj_v_subj_dt$MoCA_binned <- factor(obj_v_subj_dt$MoCA_binned, levels = c("high(>25)", "intermediate(20-25)", "low(<20)"))
 
 ##### DO THE PARTIAL POOLING #####
-pp_mod <- lmer(Well.rested ~ WASO*MoCA_binned + Age + Sex + Etiology + (1 | Study.ID), data = obj_v_subj_dt) # For impairment model: change Etiology to Impaired, add etiology as a covariate, and change data to obj_v_subj_dt. For etiology, change data to obj_v_subj_dt, get rid of etiology as a covariate. 
-# example syntax for impairment: 
-#pp_mod <- lmer(`Well.rested` ~ `WASO`*Impaired + `Age` + `Sex` + Etiology +  (1 / `Study.ID`), data = obj_v_subj_dt)
-# example syntax for etiology: 
-#pp_mod <- lmer(Well.rested ~ WASO*Etiology + Age + Sex + (1 / Study.ID), data = obj_v_subj_dt_3)
+# key: sleep duration = SleepDurationInSpt, Wake After Sleep Onset = WASO
+# 1. run for NO PREDICTOR - comment out otherwise 
+# pp_mod <- lmer(Well.rested ~ Etiology + Age + Sex + (1 | Study.ID), data = obj_v_subj_dt) 
+#summary(pp_mod)
+
+#2. run for predictor
+# model for ETIOLOGY
+#pp_mod <- lmer(latent_variable ~ WASO*Etiology + Age + Sex + (1 | Study.ID), data = obj_v_subj_dt) # For impairment model: change Etiology to Impaired, add etiology as a covariate, and change data to obj_v_subj_dt. For etiology, change data to obj_v_subj_dt, get rid of etiology as a covariate. 
+#summary(pp_mod)
+
+# model for IMPAIRMENT: 
+pp_mod <- lmer(latent_variable ~ WASO*Impaired + Age + Sex + (1 | Study.ID), data = obj_v_subj_dt)
+summary(pp_mod)
+
+# model for MoCA: 
+pp_mod <- lmer(latent_variable ~ WASO*MoCA_binned + Age + Sex + (1 | Study.ID), data = obj_v_subj_dt)
+
+
+####### IGNORE and DONT RUN THESE LINES unless doing age model (with no etiology) #######
+# full cohort
+pp_mod_age <- lmer(latent_variable ~ WASO * Age + Sex + (1 | Study.ID), data = obj_v_subj_dt)
+summary(pp_mod_age)
+
+# healthy individuals only
+obj_v_subj_dt_HC_only <- subset(obj_v_subj_dt, Etiology == "HC")
+pp_mod_age_HC_only <- lmer(latent_variable ~ WASO * Age + Sex + (1 | Study.ID), data = obj_v_subj_dt_HC_only)
+summary(pp_mod_age_HC_only)
+####### 
 
 # set up the model - QUADRATIC 
 pp_mod_quad <- lmer(Overall.quality ~ poly(SleepDurationInSpt, 2, raw = TRUE)^2*Etiology + Age + Sex + (1 | Study.ID), data = obj_v_subj_dt_3)
@@ -62,34 +146,65 @@ pp_mod_quad <- lmer(Overall.quality ~ poly(SleepDurationInSpt, 2, raw = TRUE)^2*
 pp_mod_summary <- summary(pp_mod)
 pp_mod_summary_quad <-  summary(pp_mod_quad)
 
-# get the partial pooling effects of etiology on objective variable, to plot. Whatever is in parenthesis should be what we are grouping by, and the objective variable. 
-pp <- data.frame(Effect(c("MoCA_binned", "WASO"), pp_mod)) 
+# get the partial pooling effects of etiology on objective variable, to plot. Whatever is in parenthesis should be what we are grouping by, and the objective variable. dont worry about warning message here
+#pp <- data.frame(Effect(c("Etiology", "WASO"), pp_mod)) 
+#pp <- data.frame(Effect(c("Impaired", "SleepDurationInSpt"), pp_mod))  # COMMENT THIS IN FOR IMPAIRMENT
+pp <- data.frame(Effect(c("MoCA_binned", "SleepDurationInSpt"), pp_mod))  # COMMENT THIS IN FOR MOCA
 
 pp_quad <- data.frame(Effect(c("Etiology", "SleepDurationInSpt"), pp_mod_quad))
 
 
 ##### PLOTTING #####
 
-# plot the model - MOCA, or ETIOLOGY
-ggplot(pp, aes(x = WASO, y = fit, color = factor(MoCA_binned), group = MoCA_binned)) + 
-  geom_line(size = 2) +
-  geom_ribbon(aes(fill = factor(MoCA_binned), ymin = lower, ymax = upper), alpha = 0.1) + 
-  labs(x = "Hours", y = "Well rested", color = "MoCA") +
-  theme_classic(base_size = 23) + 
-  scale_color_manual(name = "MoCA", values = c("low(<20)" = "#E41A1C", "intermediate(20-25)" = "#377EB8", "high(>25)" = "#4DAF4A")) +
-  scale_fill_manual(name = "MoCA", values = c("low(<20)" = "#E41A1C", "intermediate(20-25)" = "#377EB8", "high(>25)" = "#4DAF4A"))
+# 1. plot the model - ETIOLOGY
+ggplot(pp, aes(x = WASO, y = fit, color = factor(Etiology), group = Etiology)) + 
+  geom_line(linewidth = 2) +
+  geom_ribbon(aes(fill = factor(Etiology), ymin = lower, ymax = upper), alpha = 0.1) + 
+  labs(x = "WASO (hours)", y = "Subjective Quality", color = "Etiology") +
+  theme_classic(base_size = 30) + 
+  scale_color_manual(name = "Etiology", values = c("AD" = "#E41A1C", "LB" = "#377EB8", "HC" = "#4DAF4A")) +
+  scale_fill_manual(name = "Etiology", values = c("AD" = "#E41A1C", "LB" = "#377EB8", "HC" = "#4DAF4A"))  
 
-# plot the model - IMPAIRMENT
-ggplot(pp, aes(x = WASO, y = fit, color = factor(Impaired), group = Impaired)) + 
+# Optional - save the plot here if desired
+ggsave("/Users/awashburn/Library/CloudStorage/OneDrive-BowdoinCollege/Documents/Mormino-Lab-Internship/Python-Projects/Actigraphy-Testing/figs/WASO_subjsleep.png", width = 7.5, height = 6.25, dpi = 300)
+
+### Same plot as above, but with scattered points on top  ###
+ggplot(pp, aes(x = WASO, y = fit, color = factor(Etiology), group = Etiology)) + 
+  geom_line(linewidth = 2) +
+  geom_ribbon(aes(fill = factor(Etiology), ymin = lower, ymax = upper), alpha = 0.1) + 
+  labs(x = "WASO (hours)", y = "Subjective Quality", color = "Etiology") +
+  theme_classic(base_size = 30) + 
+  scale_color_manual(name = "Etiology", values = c("AD" = "#E41A1C", "LB" = "#377EB8", "HC" = "#4DAF4A")) +
+  scale_fill_manual(name = "Etiology", values = c("AD" = "#E41A1C", "LB" = "#377EB8", "HC" = "#4DAF4A")) +
+  geom_point(data = obj_v_subj_dt, aes(x = WASO, y = latent_variable, color=factor(Etiology)), size = 3, shape = 16, inherit.aes = FALSE, alpha = 0.5)
+
+
+# 2. plot the model - IMPAIRMENT
+ggplot(pp, aes(x = SleepDurationInSpt, y = fit, color = factor(Impaired), group = Impaired)) + 
   geom_line(size = 2) +
   geom_ribbon(aes(fill = factor(Impaired), ymin = lower, ymax = upper), alpha = 0.1) + 
-  labs(x = "WASO", y = "Mentally Alert", color = "Impaired") +
+  labs(x = "Sleep Duration (Hours)", y = "Subjective Quality", color = "Impaired") +
   theme_classic(base_size = 20) + 
   scale_color_manual(name = "Impaired", values = c("Dementia" = "#E41A1C", "MCI" = "#377EB8", "Normal" = "#4DAF4A")) +
   scale_fill_manual(name = "Impaired", values = c("Dementia" = "#E41A1C", "MCI" = "#377EB8", "Normal" = "#4DAF4A"))
 
+# Optional - save the plot here if desired
+ggsave("/Users/awashburn/Library/CloudStorage/OneDrive-BowdoinCollege/Documents/Mormino-Lab-Internship/Python-Projects/Actigraphy-Testing/figs/SleepDuration_subjsleep_IMPAIRMENT.png", width = 7.5, height = 6.25, dpi = 300)
 
-##### CORRELATION MATRIX AND VISUALIZATION #####
+# 3. plot the model - MOCA
+ggplot(pp, aes(x = SleepDurationInSpt, y = fit, color = factor(MoCA_binned), group = MoCA_binned)) + 
+  geom_line(linewidth = 2) +
+  geom_ribbon(aes(fill = factor(MoCA_binned), ymin = lower, ymax = upper), alpha = 0.1) + 
+  labs(x = "Sleep Duration (hours)", y = "Subjective Quality", color = "MoCA score") +
+  theme_classic(base_size = 30) + 
+  scale_color_manual(name = "MoCA score", values = c("high(>25)" = "#4DAF4A", "intermediate(20-25)" = "#377EB8", "low(<20)" = "#E41A1C")) +
+  scale_fill_manual(name = "MoCA score", values = c("high(>25)" = "#4DAF4A", "intermediate(20-25)" = "#377EB8", "low(<20)" = "#E41A1C")) 
+
+# Optional - save the plot here if desired
+ggsave("/Users/awashburn/Library/CloudStorage/OneDrive-BowdoinCollege/Documents/Mormino-Lab-Internship/Python-Projects/Actigraphy-Testing/figs/SleepDuration_subjsleep_MoCA.png", width = 9.5, height = 6.25, dpi = 300)
+
+
+########### CORRELATION MATRIX AND VISUALIZATION ############
 
 # set up the matrix
 subset_data_for_cor_matrix <- obj_v_subj_dt_3 %>% select(Well.rested, Overall.quality, Deep.Sleep, Mentally.Alert)
@@ -111,8 +226,8 @@ ggcorrplot(cor, lab = TRUE, lab_size = 6) +
 filtered_data$WASO_res <- resid(lm(WASO~Age+Sex, data=filtered_data)) 
 filtered_data$Well.rested_res <- resid(lm(Well.rested~Age+Sex, data=filtered_data)) 
 
-# get a data frame with 112 columns, only having a unique data table 
-unique_filtered_data <- obj_v_subj_dt_3 %>% distinct(Study.ID, .keep_all = TRUE)
+# get a data frame only having a unique data table 
+unique_filtered_data <- obj_v_subj_dt %>% distinct(Study.ID, .keep_all = TRUE)
 
 ### Extract and plot individual slopes ###
 lme.model <- lmer(Well.rested ~ WASO + (WASO|Study.ID), data=obj_v_subj_dt_3)  
@@ -139,6 +254,9 @@ ggplot(unique_filtered_data, aes(x = Etiology, y = slopes, color = factor(Etiolo
 
 
 ##### PLOT BOX PLOT OF BASELINE MEASURES ##### 
+
+# filter out etiology = other
+obj_v_subj_dt_3 <- subset(obj_v_subj_dt, Etiology != "Other")
 
 # filter unique_filtered_data so it has a mean value for WASO for EACH USER
 # Group by 'Study.ID' and calculate the mean of 'WASO'
@@ -169,85 +287,271 @@ colnames(mean_by_study)[1] <- "Study.ID"
 # merge the dfs, based on Study ID
 merged_data <- merge(unique_filtered_data, mean_by_study, by = "Study.ID")
 
-# Now, calculate the mean by 'Etiology'
-mean_data <- aggregate(mean_by_study[, 2:5],
-                       by = list(merged_data$Etiology),
-                       mean,
-                       na.rm = TRUE)
-
-
-# Convert the mean_data to a long format for plotting
+# Convert the mean_data to long format
 mean_data_long <- tidyr::gather(mean_data, key = "SubjectiveMeasure", value = "MeanValue", -Group.1)
 
+# Calculate standard deviation
+sd_data <- aggregate(mean_by_study[, 2:5],
+                     by = list(merged_data$Etiology),
+                     sd,
+                     na.rm = TRUE)
+
+# Convert standard deviation data to long format
+sd_data_long <- tidyr::gather(sd_data, key = "SubjectiveMeasure", value = "SDValue", -Group.1)
+
+# Merge mean and standard deviation data
+plot_data <- merge(mean_data_long, sd_data_long, by = c("Group.1", "SubjectiveMeasure"))
+
+# Custom labels for subjective measures
+custom_labels <- c("Mentally.Alert" = "Mentally Alert",
+                   "Deep.Sleep" = "Deep Sleep",
+                   "Overall.quality" = "Overall Quality",
+                   "Well.rested" = "Well Rested")
+
+# Create label data (one row per subjective measure)
+label_data <- plot_data %>%
+  distinct(SubjectiveMeasure) %>%
+  mutate(Label = custom_labels[SubjectiveMeasure],
+         y = -0.3)  # BELOW y=0 axis
+
+ggplot(plot_data, aes(x = SubjectiveMeasure, y = MeanValue, fill = factor(Group.1))) +
+  geom_bar(stat = "identity", position = position_dodge(width = 0.8), width = 0.7) +
+  
+  geom_errorbar(aes(ymin = MeanValue - SDValue, ymax = MeanValue + SDValue),
+                position = position_dodge(width = 0.8),
+                width = 0.2,
+                linewidth = 0.9) +
+  
+  # Add labels BELOW x-axis
+  geom_text(data = label_data,
+            aes(x = SubjectiveMeasure, y = y, label = Label),
+            inherit.aes = FALSE,
+            vjust = 1,
+            size = 4.5) +  # smaller text size
+  
+  scale_x_discrete(labels = NULL) +  # hide default x labels
+  scale_y_continuous(expand = c(0, 0)) +
+  
+  # Expand view BELOW y=0 line and allow labels to show outside
+  coord_cartesian(ylim = c(0, 5), clip = "off") +
+  
+  theme_classic(base_size = 24) +
+  labs(x = "", y = "Mean Rating", fill = "Etiology") +
+  scale_fill_manual(values = c("AD" = "#E41A1C", "LB" = "#377EB8", "HC" = "#4DAF4A")) +
+  theme(
+    axis.text.x = element_blank(),
+    axis.ticks.x = element_blank(),
+    panel.grid.major.x = element_blank(),
+    panel.grid.minor.x = element_blank(),
+    panel.border = element_blank(),
+    plot.margin = margin(t = 10, r = 10, b = 50, l = 10)  # bottom margin to make room
+  )
+
+# save the plot if desired
+ggsave("/Users/awashburn/Library/CloudStorage/OneDrive-BowdoinCollege/Documents/Mormino-Lab-Internship/Python-Projects/Actigraphy-Testing/figs/subjective_measures_bar_plot.png", width = 8.5, height = 6.25, dpi = 300)
 
 
+
+
+############## TRY THE SAME THING AS ABOVE (SUBJECTIVE VS. SCORE, for all etiologies), BUT WITH A BOXPLOT #################
 # Custom labels for the subjective measures
 custom_labels <- c("Mentally Alert" = "Mentally.Alert",
                    "Deep Sleep" = "Deep.Sleep",
                    "Overall Quality" = "Overall.quality",
                    "Well Rested" = "Well.rested")
 
-# Plot the box plot with grouped bars and labels for the subjective measures
-# weird plot debug: rename the y tick marks manually
-# Define the new labels for y-axis ticks
-new_y_labels <- c(
-  "0" = "1",
-  "1" = "2",
-  "2" = "3",
-  "3" = "4",
-  "4" = "5", 
-  "5" = "6"
-)
+# Convert the merged_data to a long format for plotting
+merged_data_long <- tidyr::gather(merged_data, 
+                                  key = "SubjectiveMeasure", 
+                                  value = "Value", 
+                                  Well.rested.x, Deep.Sleep.x, Mentally.Alert.x, Overall.quality.x)
 
-
-ggplot(mean_data_long, aes(x = SubjectiveMeasure, y = MeanValue, fill = factor(Group.1))) +
-  geom_bar(stat = "identity", position = position_dodge(width = 0.8), width = 0.7) +
-  geom_text(data = subset(mean_data_long, !duplicated(SubjectiveMeasure)), 
-            aes(label = names(custom_labels), y = max(MeanValue) + 0.5),
-            position = position_dodge(width = 0.8),
-            vjust = -0.5,
-            size = 8) +
+# Plot the box plot with jittered points
+ggplot(merged_data_long, aes(x = SubjectiveMeasure, y = Value, fill = factor(Etiology))) +
+  # Add the box plot with transparent fill
+  geom_boxplot(outlier.shape = NA, width = 0.7, position = position_dodge(width = 0.8), alpha = 0.3) +
+  # Add jittered points on top of the box plot
+  geom_jitter(
+    aes(color = factor(Etiology)),
+    position = position_jitterdodge(jitter.width = 0.2, dodge.width = 0.8),
+    size = 2,
+    alpha = 0.6
+  ) +
+  # Adjust x-axis labels with custom labels
   scale_x_discrete(labels = custom_labels) +
-  scale_y_continuous(limits = c(0, 5), expand = c(0, 0)) +  # Set y-axis limits from 0 to 5 
-  coord_cartesian(
-    #xlim = NULL,
-    ylim = c(1, 5),
-    expand = TRUE,
-    default = FALSE,
-    clip = "on"
-  ) + 
+  # Set y-axis limits and configure scaling
+  scale_y_continuous(limits = c(0, 7), expand = c(0, 0)) +
+  # Set the theme and label aesthetics
   theme_classic(base_size = 24) +
-  labs(x = "", y = "Mean Score", fill = "Etiology") +
+  labs(x = "", y = "Score", fill = "Etiology", color = "Etiology") +
+  # Set custom colors for fill and points
   scale_fill_manual(values = c("AD" = "#E41A1C", "LB" = "#377EB8", "HC" = "#4DAF4A")) +
+  scale_color_manual(values = c("AD" = "#E41A1C", "LB" = "#377EB8", "HC" = "#4DAF4A")) +
+  # Customize theme elements
   theme(
-        axis.text.x = element_blank(),
-        axis.ticks.x = element_blank(),
-        panel.grid.major.x = element_blank(),
-        panel.grid.minor.x = element_blank(),
-        panel.border = element_blank())
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    axis.ticks.x = element_blank(),
+    panel.grid.major.x = element_blank(),
+    panel.grid.minor.x = element_blank(),
+    panel.border = element_blank()
+  )
+
+
+
+############# OBJECTIVE VS. SCORE, FOR ALL ETIOLOGIES ################
+
+# define custom x axis labels
+custom_labels_obj <- c("WASO" = "WASO",
+                   "SleepDurationInSpt" = "Sleep Duration")
+
+# Convert the merged_data to a long format for plotting
+merged_data_long_obj <- tidyr::gather(merged_data, 
+                                  key = "ObjectiveMeasure", 
+                                  value = "Value", 
+                                  WASO, SleepDurationInSpt)
+
+# Subset the data for each measure
+waso_data <- subset(merged_data_long_obj, ObjectiveMeasure == "WASO")
+sleep_data <- subset(merged_data_long_obj, ObjectiveMeasure == "SleepDurationInSpt")  # or whatever label you use for sleep duration
+
+# Plot 1: WASO
+plot_waso <- ggplot(waso_data, aes(x = "WASO", y = Value, fill = factor(Etiology))) +
+  geom_boxplot(outlier.shape = NA, width = 0.7, alpha = 0.3,
+               position = position_dodge(width = 0.8)) +
+  geom_jitter(
+    aes(color = factor(Etiology)),
+    position = position_jitterdodge(jitter.width = 0.2, dodge.width = 0.8),
+    size = 2,
+    alpha = 0.6
+  ) +
+  scale_y_continuous(limits = c(-0.1, 5), expand = c(0, 0)) +
+  theme_classic(base_size = 24) +
+  labs(x = "", y = "Hours", fill = "Etiology", color = "Etiology") +
+  scale_fill_manual(values = c("AD" = "#E41A1C", "LB" = "#377EB8", "HC" = "#4DAF4A")) +
+  scale_color_manual(values = c("AD" = "#E41A1C", "LB" = "#377EB8", "HC" = "#4DAF4A")) +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    axis.ticks.x = element_blank(),
+    panel.grid.major.x = element_blank(),
+    panel.grid.minor.x = element_blank(),
+    panel.border = element_blank()
+  )
+
+# Plot 2: Sleep duration
+plot_sleep <- ggplot(sleep_data, aes(x = "Sleep Duration", y = Value, fill = factor(Etiology))) +
+  geom_boxplot(outlier.shape = NA, width = 0.7, alpha = 0.3,
+               position = position_dodge(width = 0.8)) +
+  geom_jitter(
+    aes(color = factor(Etiology)),
+    position = position_jitterdodge(jitter.width = 0.2, dodge.width = 0.8),
+    size = 2,
+    alpha = 0.6
+  ) +
+  scale_y_continuous(limits = c(-0.1, 11), expand = c(0, 0)) +
+  theme_classic(base_size = 24) +
+  labs(x = "", y = "Hours", fill = "Etiology", color = "Etiology") +
+  scale_fill_manual(values = c("AD" = "#E41A1C", "LB" = "#377EB8", "HC" = "#4DAF4A")) +
+  scale_color_manual(values = c("AD" = "#E41A1C", "LB" = "#377EB8", "HC" = "#4DAF4A")) +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    axis.ticks.x = element_blank(),
+    panel.grid.major.x = element_blank(),
+    panel.grid.minor.x = element_blank(),
+    panel.border = element_blank()
+  )
+
+# Combine the plots side by side
+plot_waso + plot_sleep + plot_layout(ncol = 2, guides = "collect")
+
+# save this plot, if desired
+ggsave("/Users/awashburn/Library/CloudStorage/OneDrive-BowdoinCollege/Documents/Mormino-Lab-Internship/Python-Projects/Actigraphy-Testing/figs/box_plot_with_jitter.png", width = 8.5, height = 6.25, dpi = 300)
+
+
+
 
  
 out_of_range_rows <- which(mean_data_long$MeanValue < 1 | mean_data_long$MeanValue > 5)
 print(mean_data_long[out_of_range_rows, ])
 
 
-########## CONFIRMATORY FACTOR ANALYSIS ##########
-# set up model
-CFA.model <- 'subjective sleep quality  =~ Mentally.Alert + Deep.Sleep + Overall.quality + Well.rested'
+###### TESTING ######
+# Merge mean_data_long and sd_data_long on both "Group.1" and "SubjectiveMeasure"
+merged_data <- merge(mean_data_long, sd_data_long, by = c("Group.1", "SubjectiveMeasure"))
 
-# remove any missing data from obj_v_subj_dt 
+# View the merged data
+print(merged_data)
+
+# Plot the box plot with error bars using merged_data
+ggplot(merged_data, aes(x = SubjectiveMeasure, y = MeanValue, fill = factor(Group.1))) +
+  geom_bar(stat = "identity", position = position_dodge(width = 0.8), width = 0.7) +
+  geom_errorbar(aes(ymin = MeanValue - SDValue, ymax = MeanValue + SDValue, group = factor(Group.1)),
+                position = position_dodge(width = 0.8),
+                width = 0.25,  # Adjust the width of the error bars
+                color = "black",
+                size = 1.5) +  # Adjust the thickness of the error bars
+  geom_text(data = subset(merged_data, !duplicated(SubjectiveMeasure)), 
+            aes(label = names(custom_labels), y = max(MeanValue) + 0.8),  # Adjust the vertical position of labels
+            position = position_dodge(width = 0.8),
+            vjust = -0.95,
+            size = 15) +
+  scale_x_discrete(labels = custom_labels) +
+  scale_y_continuous(limits = c(0, 5), expand = c(0, 0)) +
+  coord_cartesian(
+    ylim = c(1, 5),
+    expand = TRUE,
+    default = FALSE,
+    clip = "on"
+  ) + 
+  theme_classic(base_size = 24) +
+  labs(x = "", y = "Mean Rating", fill = "Etiology") +
+  scale_fill_manual(values = c("AD" = "#E41A1C", "LB" = "#377EB8", "HC" = "#4DAF4A")) +
+  theme(
+    axis.text.x = element_blank(),
+    axis.ticks.x = element_blank(),
+    panel.grid.major.x = element_blank(),
+    panel.grid.minor.x = element_blank(),
+    panel.border = element_blank(), 
+    axis.title.x = element_text(size = 70),  # Increase font size of x-axis label
+    axis.title.y = element_text(size = 70),    # Increase font size of y-axis label
+    legend.title = element_text(size = 70),  # Increase font size of legend title
+    legend.text = element_text(size = 65)    # Increase font size of legend text
+  )
 
 
-# fit model to our data
-fit <- cfa(CFA.model, data = obj_v_subj_dt)
 
-# view the summary of the model
-summary(fit, fit.measures = TRUE, standardized = T)
 
-semPaths(fit, "std", edge.label.cex = 0.5, curvePivot = TRUE)
 
-# add this as column (remove na's from dt first)
-obj_v_subj_dt$latent_variable <- predict(fit)
+
+
+
+# Plot the box plot with error bars using merged_data
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# expot dummy data
+
+
+# Step 1: Subset the data
+subset_data <- obj_v_subj_dt[1:100, c('Mentally.Alert', 'Deep.Sleep', 'Overall.quality', 'Well.rested')]
+
+# Step 2: Export the subset to a CSV file
+write.csv(subset_data, file = "Bowdoin_obj_v_subj_dummy_data.csv", row.names = FALSE)
+
+
+
 
 
 
