@@ -16,13 +16,6 @@ def import_data(subjective_data_filename_all, subjective_data_filename_1, subjec
     :param diagnosis_data_filename: the file describing diagnosis and sex information.
     :return: subjective_sleep_df, objective_sleep_df, diagnosis_data : a tuple containing the three values respectively.
     """
-    #import_directory = '/Users/awashburn/Library/CloudStorage/OneDrive-BowdoinCollege/Documents/' \
-    #             'Mormino-Lab-Internship/Python-Projects/Actigraphy-Testing/day-to-day-modeling-files/'
-
-    # TEST COMMENT
-
-
-    '/Users/awashburn/Library/CloudStorage/OneDrive-BowdoinCollege/Documents/Mormino-Lab-Internship/Python-Projects/Actigraphy-Testing/day-to-day-modeling-files/'
 
     subjective_sleep_df_all = pd.read_csv(import_directory + subjective_data_filename_all)
     subjective_sleep_df_July_2023 = pd.read_csv(import_directory + subjective_data_filename_1)
@@ -30,13 +23,18 @@ def import_data(subjective_data_filename_all, subjective_data_filename_1, subjec
     objective_sleep_df = pd.read_csv(import_directory + objective_data_filename)
     diagnosis_data_df = pd.read_csv(import_directory + diagnosis_data_filename)
 
-
-
     return (subjective_sleep_df_all, subjective_sleep_df_July_2023, subjective_sleep_df_REDCAP_fixed,
     objective_sleep_df, diagnosis_data_df)
 
-# add filename to each row in the dataframe where it is missing, with a dataframe with all rows from a single subject ID
+
+
 def add_filename_per_subject_id(subject_id_df):
+    """
+    HELPER METHOD that adds filename to each row in the dataframe where it is missing, with a dataframe with all rows
+    from a single subject ID. This is just a data processing step.
+    :param subject_id_df: file containing all the data with missing filename data
+    :return: subject_id_df: the complete file, with the file names imputed
+    """
     # sort each group by the 'Repeat Instrument' column
     subject_id_df.sort_values('Repeat Instrument',  ascending=False, inplace=True)
 
@@ -79,7 +77,6 @@ def subjective_long_add_filename(subjective_sleep_df_all, filepath):
     :param subjective_data_filename_all: the file containing subjective sleep metrics for all data.
     :return:
     """
-
     # add a row index column to the dataframe
     subjective_sleep_df_all['row_index'] = subjective_sleep_df_all.index
     # this is to help ensure that the rows are processed in the same order as in the original dataframe
@@ -92,8 +89,6 @@ def subjective_long_add_filename(subjective_sleep_df_all, filepath):
         subject_id_dfs[study_id] = subject_id_df
     # convert the dictionary back to a single dataframe
     subjective_sleep_df_all = pd.concat(subject_id_dfs.values(), ignore_index=True)
-
-    print(subjective_sleep_df_all)
 
 
     #1) keep iterating over rows, until a row is found that has a value for the filename
@@ -120,9 +115,10 @@ def subjective_long_add_filename(subjective_sleep_df_all, filepath):
 
 def reformat_date_european_to_american_objective(objective_sleep_df, filepath):
     """
-    the objective sleep df has date formatted in European format. Reformat it to be in American format to be consistent.
+    the objective sleep df has date formatted in European format. Reformat it to be in American format to be consistent
+    with the subjective file.
     :param objective_sleep_df: the objective sleep data frame
-    :return:
+    :return:objective_sleep_df: the objective sleep data frame, with date in American format
     """
     # Step 1: Use the str.replace() method to remove ".RData" from the "File Name" column. Reasign it to be in place.
     objective_sleep_df['filename'] = objective_sleep_df['filename'].str.replace(r'\.RData$', '', regex=True)
@@ -164,13 +160,13 @@ def reformat_date_to_common_format(dataframe, date_column):
 def merge_objective_subjective_files(subjective_sleep_df_all_fixed, objective_sleep_df_fixed):
     """
     Merge rows in the subjective and objective dfs by filename and date.
-    :param subjective_sleep_df_all_fixed:
-    :param objective_sleep_df_fixed:
+    :param subjective_sleep_df_all_fixed: subjective sleep data file
+    :param objective_sleep_df_fixed: objective sleep data file
     :return:
     """
 
     # reformat the date for subjective sleep df
-    # date format from NEW data update june 25 2024: 2021-08-29
+    # date format from LATEST data update june 25 2024: 2021-08-29
     # date format from PREVIOUS data: 8/29/21
     subjective_sleep_df_all_fixed['Date'] = pd.to_datetime(subjective_sleep_df_all_fixed['Date'], format='%m/%d/%y',
                                                          ) # errors = 'coerce'
@@ -189,12 +185,11 @@ def merge_objective_subjective_files(subjective_sleep_df_all_fixed, objective_sl
 
 def merged_objsubj_agesexetiology(merged_df, age_sex_etiology_df):
     """
-    merges the obj/subj df and the df containing info about age, sex, and etiology, by filename.
-    :param merged_df:
-    :param age_sex_etiology_df:
-    :return:
+    merges the (already merged) obj/subj df and the df containing demographic info about age, sex, and etiology by filename.
+    :param merged_df: file with both objective and subjective data
+    :param age_sex_etiology_df: file containing demographic data
+    :return: merged_df: file containing objective sleep data, subjective sleep data, and demographic data
     """
-
     # Perform the merge
     merged_df = pd.merge(merged_df, age_sex_etiology_df, left_on='File Name', right_on='Actigraphy_File', how='left')
 
@@ -202,54 +197,6 @@ def merged_objsubj_agesexetiology(merged_df, age_sex_etiology_df):
     merged_df.to_csv(filepath + 'objective_subjective_merged_with_severity.csv', index=False)
     return merged_df
 
-
-
-def plot_obj_vs_subjective_unbinned(merged_df, subj_x_value, obj_y_value, color, obj_y_axis_name):
-    """
-    Violin plot of objective sleep characteristic (x value) vs. subjective sleep characteristic (y value), unbinned.
-    :param merged_df:
-    :param x_value:
-    :param y_value:
-    :return:
-    """
-
-    # Create violin plots using Seaborn
-    plt.figure(figsize=(10, 6))  # Adjust the figure size if needed
-    sns.violinplot(x=merged_df[subj_x_value], y=merged_df[obj_y_value], color=color)
-
-
-    # calculate medians
-    medians = merged_df.groupby(subj_x_value)[obj_y_value].median()
-
-    # Plot the white dots for the median values
-    sns.stripplot(x=medians.index, y=medians.values, color='white', size=7, linewidth=2)
-
-    # Add a line of best fit for the median values
-    x_values = np.arange(1, len(medians)+1)  # Generate x values for the plot - 1 to 5 (centered with 1-5 subj. scores)
-    coefficients = np.polyfit(x_values, medians.values, 1)  # Fit a first-degree polynomial (linear fit)
-
-    # Calculate the y values for the line of best fit
-    y_values = np.polyval(coefficients, x_values)
-
-    # Find the x-axis position for the first and last violin plots
-    x_first_violin = x_values[0] - 1.15
-    x_last_violin = x_values[-1] - 0.75
-
-    # Draw the line of best fit using plt.plot()
-    plt.plot([x_first_violin, x_last_violin], [y_values[0], y_values[-1]], color='darkgrey', linestyle='dashed',
-             linewidth=1.5)
-
-    # Set the y-axis limits to include the range of the line
-    plt.ylim(min(merged_df[obj_y_value] - 0.99), max(merged_df[obj_y_value] + 1.5))
-    plt.xlim(-0.5, 4.6)
-
-    # add slope, R^2 to the plot
-    r_squared = np.corrcoef(x_values, medians.values)[0, 1] ** 2 # squaring the correlation of x_values and median values (R^2)
-    plt.text(4.5, max(merged_df[obj_y_value] + 1) , f"R²: {r_squared:.2f}", fontsize=9, ha='right')
-
-    plt.xlabel(subj_x_value)
-    plt.ylabel(obj_y_axis_name)
-    plt.show()
 
 
 '''FUNCTION CALLS'''
@@ -275,62 +222,3 @@ subjective_sleep_df_all_fixed = subjective_long_add_filename(subjective_sleep_df
 objective_sleep_df_fixed = reformat_date_european_to_american_objective(objective_sleep_df, filepath)
 merged_df = merge_objective_subjective_files(subjective_sleep_df_all_fixed, objective_sleep_df_fixed)
 merged_df_final = merged_objsubj_agesexetiology(merged_df, diagnosis_data_df)
-
-print('unique file names in subjective df: ')
-subjective_data_df = pd.read_csv(import_directory + subjective_data_filename_all)
-print(subjective_data_df['File Name'].nunique())
-
-print('unique file names in objective df: ')
-objective_data_df = pd.read_csv(import_directory + objective_data_filename)
-print(objective_data_df['ID'].nunique())
-
-print('unique fil names in final (merged) df: ')
-print(merged_df_final['File Name'].nunique())
-
-print("TESTING SOMETHING")
-
-# Load data
-subjective_data_df = pd.read_csv(import_directory + subjective_data_filename_all)
-objective_data_df = pd.read_csv(import_directory + objective_data_filename)
-
-# Remove '.cwa' extension from subjective file names
-subjective_files = set(subjective_data_df['File Name'].str.replace('.cwa', '', regex=False).unique())
-objective_files = set(objective_data_df['ID'].unique())
-
-# Find file names in objective but not in subjective
-objective_not_in_subjective = objective_files - subjective_files
-
-# Print the result
-print("File names in objective data but NOT in subjective data:")
-for file_name in sorted(objective_not_in_subjective):
-    print(file_name)
-
-print(f"\nTotal: {len(objective_not_in_subjective)} files")
-
-# Normalize the file names
-subjective_files = set(subjective_data_df['File Name'].str.replace('.cwa', '', regex=False).unique())
-objective_files = set(objective_data_df['ID'].unique())
-
-# Find intersection (i.e., common file names)
-files_in_both_obj_and_subj = subjective_files & objective_files
-
-# Print count
-print(f"Number of file names in BOTH objective and subjective data: {len(files_in_both_obj_and_subj)}")
-
-# print the files that are present in both obj / subj file not not in the merged file
-set_of_unique_merged_files = set(merged_df_final['File Name'].str.replace('.cwa', '', regex=False).unique())
-print("files that are in both obj/subj but NOT in the merged final file: ")
-print(files_in_both_obj_and_subj - set_of_unique_merged_files)
-
-
-
-
-
-
-
-
-
-
-
-
-
